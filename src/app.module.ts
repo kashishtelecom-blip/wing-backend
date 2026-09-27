@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { UsersModule } from './users/users.module';
@@ -12,6 +12,9 @@ import { CommentsModule } from './comments/comments.module';
 import { SearchModule } from './search/search.module';
 import { ChatModule } from './chat/chat.module';
 import { CommunitiesModule } from './communities/communities.module';
+import { ListsModule } from './lists/lists.module';
+import { WaitlistModule } from './waitlist/waitlist.module';
+import { AdsModule } from './ads/ads.module';
 import { LikesModule } from './likes/likes.module';
 import { FollowsModule } from './follows/follows.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
@@ -19,10 +22,9 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RepostsModule } from './reposts/reposts.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
-
 @Module({
   imports: [
-     ScheduleModule.forRoot(),
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
       {
@@ -30,9 +32,13 @@ import { ScheduleModule } from '@nestjs/schedule';
         limit: 1000,
       },
     ]),
-    MongooseModule.forRoot(
-      process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/wing',
-    ),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGODB_URI'),
+      }),
+    }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',
@@ -44,6 +50,9 @@ import { ScheduleModule } from '@nestjs/schedule';
     SearchModule,
     ChatModule,
     CommunitiesModule,
+    ListsModule,
+    WaitlistModule,
+    AdsModule,
     LikesModule,
     FollowsModule,
     BookmarksModule,
