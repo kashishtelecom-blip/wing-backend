@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Types } from 'mongoose';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -225,9 +226,12 @@ export class UsersController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findById(id);
+findOne(@Param('id') id: string) {
+  if (!id || id === 'undefined' || id === 'null' || !Types.ObjectId.isValid(id)) {
+    throw new BadRequestException('Invalid user ID');
   }
+  return this.usersService.findById(id);
+}
 
   @Post(':id/follow')
   @UseGuards(JwtAuthGuard)
