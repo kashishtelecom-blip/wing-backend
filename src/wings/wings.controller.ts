@@ -73,10 +73,11 @@ export class WingsController {
     return this.wingsService.publishDraft(id, req.user.userId);
   }
 
-  @Get('trending/hashtags')
-  getTrendingHashtags(@Query('limit') limit: number = 10) {
-    return this.wingsService.getTrendingHashtags(Number(limit));
-  }
+ @Get('trending/hashtags')
+getTrendingHashtags(@Query('limit') limit?: number) {
+  const n = limit ? Number(limit) : 10;
+  return this.wingsService.getTrendingHashtags(n);
+}
 
   @Get('hashtag/:tag')
   findByHashtag(

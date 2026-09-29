@@ -463,42 +463,44 @@ async reportCopyright(
   }
 
   async getTrendingHashtags(limit = 10) {
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    const result = await this.wingModel.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: since },
-          deletedAt: null,
-          isDraft: { $ne: true },
+  const result = await this.wingModel.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: since },
+        deletedAt: null,
+        isDraft: { $ne: true },
+        isPublished: true,
+      },
+    },
+    { $unwind: '$hashtags' },
+    {
+      $group: {
+        _id: '$hashtags',
+        count: { $sum: 1 },
+        totalLikes: { $sum: '$likesCount' },
+        totalViews: { $sum: '$views' },
+      },
+    },
+    {
+      $addFields: {
+        score: {
+          $add: [
+            '$count',
+            { $multiply: ['$totalLikes', 3] },
+            { $multiply: ['$totalViews', 0.1] },
+          ],
         },
       },
-      { $unwind: '$hashtags' },
-      {
-        $group: {
-          _id: '$hashtags',
-          count: { $sum: 1 },
-          totalLikes: { $sum: '$likesCount' },
-          totalViews: { $sum: '$views' },
-        },
-      },
-      {
-        $addFields: {
-          score: {
-            $add: [
-              '$count',
-              { $multiply: ['$totalLikes', 3] },
-              { $multiply: ['$totalViews', 0.1] },
-            ],
-          },
-        },
-      },
-      { $sort: { score: -1 } },
-      { $limit: limit },
-      { $project: { _id: 0, hashtag: '$_id', count: 1, score: 1 } },
-    ]);
+    },
+    { $sort: { score: -1 } },
+    { $limit: limit },
+    { $project: { _id: 1, count: 1, score: 1 } }, // keep _id
+  ]);
 
-    return result;
+  return result;
+
   }
 
   // ============================================
