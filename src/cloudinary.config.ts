@@ -18,7 +18,7 @@ export const avatarStorage = new CloudinaryStorage({
 
 export const mediaStorage = new CloudinaryStorage({
   cloudinary,
-  params: async (_req, file) => {
+  params: async (_req: any, file: any) => {
     const isVideo = /\.(mp4|webm|mov|m4v)$/i.test(file.originalname);
     return {
       folder: 'wing/media',
