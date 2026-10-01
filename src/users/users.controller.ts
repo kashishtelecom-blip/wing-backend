@@ -15,6 +15,8 @@ import { RepostsService } from '../reposts/reposts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { avatarStorage } from '../cloudinary.config';
+
 
 
 @ApiTags('users')
@@ -50,29 +52,16 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @UseInterceptors(
-    FileInterceptor('avatar', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, callback) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          callback(null, `avatar-${uniqueSuffix}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, callback) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-          return callback(new BadRequestException('Only image files allowed'), false);
-        }
-        callback(null, true);
-      },
-      limits: { fileSize: 3 * 1024 * 1024 },
-    }),
-  )
+  FileInterceptor('avatar', {
+    storage: avatarStorage,
+    limits: { fileSize: 3 * 1024 * 1024 },
+  }),
+)
   async uploadAvatar(@Request() req, @UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('No file uploaded');
-    const avatarUrl = `/uploads/${file.filename}`;
-    return this.usersService.updateAvatar(req.user.userId, avatarUrl);
-  }
+  if (!file) throw new BadRequestException('No file uploaded');
+  const avatarUrl = (file as any).path || (file as any).secure_url || '';
+  return this.usersService.updateAvatar(req.user.userId, avatarUrl);
+}
 
   // ============ SUBSCRIPTION ============
   @Get('me/subscription')

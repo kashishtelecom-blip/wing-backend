@@ -15,6 +15,7 @@ import { CreateWingDto } from './dto/create-wing.dto';
 import { UpdateWingDto } from './dto/update-wing.dto';
 import { FindAllWingsDto } from './dto/find-all-wings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { mediaStorage } from '../cloudinary.config';
 
 const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v)$/i;
@@ -203,37 +204,19 @@ getTrendingHashtags(@Query('limit') limit?: number) {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, callback) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          callback(null, 'media-' + uniqueSuffix + ext);
-        },
-      }),
-      fileFilter: (req, file, callback) => {
-        const isImage = IMAGE_EXT.test(file.originalname);
-        const isVideo = VIDEO_EXT.test(file.originalname);
-        if (!isImage && !isVideo) {
-          return callback(
-            new BadRequestException('Only image (jpg/png/gif/webp) or video (mp4/webm/mov) allowed'),
-            false,
-          );
-        }
-        callback(null, true);
-      },
-      limits: { fileSize: 50 * 1024 * 1024 },
-    }),
-  )
+  FileInterceptor('file', {
+    storage: mediaStorage,
+    limits: { fileSize: 50 * 1024 * 1024 },
+  }),
+)
   async uploadMedia(
     @Request() req,
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!file) throw new BadRequestException('No file uploaded');
-    const mediaUrl = '/uploads/' + file.filename;
-    const isVideo = VIDEO_EXT.test(file.originalname);
+  if (!file) throw new BadRequestException('No file uploaded');
+const mediaUrl = (file as any).path || (file as any).secure_url || '';
+const isVideo = VIDEO_EXT.test(file.originalname);
     if (isVideo) {
       return this.wingsService.updateVideo(id, req.user.userId, mediaUrl);
     }
