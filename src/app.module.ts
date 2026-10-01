@@ -3,8 +3,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { WingsModule } from './wings/wings.module';
@@ -39,10 +37,7 @@ import { ScheduleModule } from '@nestjs/schedule';
         uri: configService.get<string>('MONGODB_URI'),
       }),
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'),
-      serveRoot: '/uploads',
-    }),
+    
     UsersModule,
     AuthModule,
     WingsModule,

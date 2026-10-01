@@ -5,8 +5,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Types } from 'mongoose';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { FollowsService } from '../follows/follows.service';

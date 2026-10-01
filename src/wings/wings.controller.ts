@@ -5,8 +5,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
 import { WingsService } from './wings.service';
 import { LikesService } from '../likes/likes.service';
 import { BookmarksService } from '../bookmarks/bookmarks.service';
