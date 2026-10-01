@@ -22,9 +22,7 @@ export class WaitlistController {
   }
 
   @Post('join')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  join(@Request() req, @Body() dto: JoinWaitlistDto) {
-    return this.waitlistService.join(req.user.userId, dto);
+  join(@Body() dto: JoinWaitlistDto) {
+    return this.waitlistService.join(undefined, dto);
   }
 }

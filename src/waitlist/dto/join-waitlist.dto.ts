@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class JoinWaitlistDto {
   @IsEmail()
