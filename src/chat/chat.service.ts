@@ -29,7 +29,6 @@ export class ChatService {
       .sort({ lastMessageAt: -1 })
       .exec();
 
-    // Map each to include `other` (the participant that isn't me) and unreadCount
     const results = await Promise.all(
       conversations.map(async (conv: any) => {
         const other = (conv.participants || []).find(
@@ -120,7 +119,7 @@ export class ChatService {
   }
 
   // ============================================
-  // GET MESSAGES
+  // GET MESSAGES (with delivered tracking)
   // ============================================
   async getMessages(
     conversationId: string,
@@ -138,10 +137,20 @@ export class ChatService {
     );
     if (!isParticipant) throw new ForbiddenException('Not a participant');
 
+    // ✅ Mark all messages from OTHER people as delivered
+    await this.messageModel.updateMany(
+      {
+        conversation: new Types.ObjectId(conversationId),
+        sender: { $ne: new Types.ObjectId(userId) },
+        deliveredAt: null,
+      },
+      { $set: { deliveredAt: new Date() } },
+    );
+
     const skip = (page - 1) * limit;
     const messages = await this.messageModel
       .find({ conversation: new Types.ObjectId(conversationId), deletedAt: null })
-            .populate('sender', 'username name avatarUrl isVerified')
+      .populate('sender', 'username name avatarUrl isVerified')
       .populate({
         path: 'replyTo',
         select: 'text mediaUrl mediaType sender deletedAt',
@@ -156,7 +165,7 @@ export class ChatService {
   }
 
   // ============================================
-  // SEND MESSAGE (with media support)
+  // SEND MESSAGE (with media + reply)
   // ============================================
   async sendMessage(
     conversationId: string,
@@ -210,6 +219,9 @@ export class ChatService {
       .exec();
   }
 
+  // ============================================
+  // DELETE MESSAGE
+  // ============================================
   async deleteMessage(conversationId: string, userId: string, messageId: string) {
     if (!Types.ObjectId.isValid(messageId)) {
       throw new BadRequestException('Invalid message id');

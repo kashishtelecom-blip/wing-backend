@@ -28,6 +28,9 @@ export class Message {
   read: boolean;
 
   @Prop({ type: Date, default: null })
+  deliveredAt: Date | null;
+
+  @Prop({ type: Date, default: null })
   deletedAt: Date | null;
 }
 
