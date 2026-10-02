@@ -1,3 +1,4 @@
+
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
@@ -19,6 +20,9 @@ export class Message {
 
   @Prop({ type: String, enum: ['image', 'video', null], default: null })
   mediaType: 'image' | 'video' | null;
+
+  @Prop({ type: Types.ObjectId, ref: 'Message', default: null })
+  replyTo?: Types.ObjectId | null;
 
   @Prop({ default: false })
   read: boolean;

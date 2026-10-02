@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Param, Body, Query,
+  Controller, Get, Post, Patch, Delete, Param, Body, Query,  // ← add Delete
   UseGuards, Request, BadRequestException,
   UseInterceptors, UploadedFile,
 } from '@nestjs/common';
@@ -45,11 +45,11 @@ export class ChatController {
     );
   }
 
-  @Post('conversations/:id/messages')
+@Post('conversations/:id/messages')
   sendMessage(
     @Request() req,
     @Param('id') id: string,
-    @Body() body: { text?: string; mediaUrl?: string; mediaType?: 'image' | 'video' },
+    @Body() body: { text?: string; mediaUrl?: string; mediaType?: 'image' | 'video'; replyTo?: string },
   ) {
     if (!body?.text && !body?.mediaUrl) {
       throw new BadRequestException('text or media required');
@@ -60,7 +60,17 @@ export class ChatController {
       body.text || '',
       body.mediaUrl,
       body.mediaType,
+      body.replyTo,
     );
+  }
+
+  @Delete('conversations/:id/messages/:messageId')
+  deleteMessage(
+    @Request() req,
+    @Param('id') id: string,
+    @Param('messageId') messageId: string,
+  ) {
+    return this.chatService.deleteMessage(id, req.user.userId, messageId);
   }
 
   // ✅ Upload media for a DM (returns the Cloudinary URL)

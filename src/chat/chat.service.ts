@@ -141,7 +141,12 @@ export class ChatService {
     const skip = (page - 1) * limit;
     const messages = await this.messageModel
       .find({ conversation: new Types.ObjectId(conversationId), deletedAt: null })
-      .populate('sender', 'username name avatarUrl isVerified')
+            .populate('sender', 'username name avatarUrl isVerified')
+      .populate({
+        path: 'replyTo',
+        select: 'text mediaUrl mediaType sender deletedAt',
+        populate: { path: 'sender', select: 'username name' },
+      })
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limit)
@@ -159,6 +164,7 @@ export class ChatService {
     text: string,
     mediaUrl?: string,
     mediaType?: 'image' | 'video',
+    replyTo?: string,
   ) {
     if (!Types.ObjectId.isValid(conversationId)) {
       throw new BadRequestException('Invalid conversation');
@@ -178,6 +184,7 @@ export class ChatService {
       text: text || '',
       mediaUrl: mediaUrl || null,
       mediaType: mediaType || null,
+      replyTo: replyTo && Types.ObjectId.isValid(replyTo) ? new Types.ObjectId(replyTo) : null,
     });
 
     (conv as any).lastMessage = {
@@ -195,7 +202,29 @@ export class ChatService {
     return this.messageModel
       .findById(message._id)
       .populate('sender', 'username name avatarUrl isVerified')
+      .populate({
+        path: 'replyTo',
+        select: 'text mediaUrl mediaType sender',
+        populate: { path: 'sender', select: 'username name' },
+      })
       .exec();
+  }
+
+  async deleteMessage(conversationId: string, userId: string, messageId: string) {
+    if (!Types.ObjectId.isValid(messageId)) {
+      throw new BadRequestException('Invalid message id');
+    }
+    const msg = await this.messageModel.findById(messageId);
+    if (!msg) throw new NotFoundException('Message not found');
+    if (msg.sender.toString() !== userId) {
+      throw new ForbiddenException('You can only delete your own messages');
+    }
+    msg.text = '';
+    msg.mediaUrl = null;
+    msg.mediaType = null;
+    msg.deletedAt = new Date();
+    await msg.save();
+    return { deleted: true };
   }
 
   // ============================================
