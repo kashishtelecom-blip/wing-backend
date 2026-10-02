@@ -1,156 +1,206 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable, NotFoundException, ForbiddenException, BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Conversation, ConversationDocument } from './schemas/conversation.schema';
+import {
+  Conversation, ConversationDocument,
+} from './schemas/conversation.schema';
 import { Message, MessageDocument } from './schemas/message.schema';
-import { User, UserDocument } from '../users/schemas/user.schema';
 
 @Injectable()
 export class ChatService {
   constructor(
-    @InjectModel(Conversation.name) private conversationModel: Model<ConversationDocument>,
-    @InjectModel(Message.name) private messageModel: Model<MessageDocument>,
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Conversation.name)
+    private conversationModel: Model<ConversationDocument>,
+    @InjectModel(Message.name)
+    private messageModel: Model<MessageDocument>,
   ) {}
 
-  async getOrCreateConversation(userId: string, otherUserId: string) {
-    if (userId === otherUserId) throw new BadRequestException('Cannot chat with yourself');
-    const other = await this.userModel.findById(otherUserId).select('-password');
-    if (!other) throw new NotFoundException('User not found');
+  // ============================================
+  // LIST CONVERSATIONS
+  // ============================================
+  async getMyConversations(userId: string) {
+    const uid = new Types.ObjectId(userId);
 
-    const uId = new Types.ObjectId(userId);
-    const oId = new Types.ObjectId(otherUserId);
+    const conversations = await this.conversationModel
+      .find({ participants: uid })
+      .populate('participants', 'username name avatarUrl isVerified')
+      .sort({ lastMessageAt: -1 })
+      .exec();
 
-    let conv = await this.conversationModel.findOne({
-      participants: { $all: [uId, oId], $size: 2 },
-    });
+    // Map each to include `other` (the participant that isn't me) and unreadCount
+    const results = await Promise.all(
+      conversations.map(async (conv: any) => {
+        const other = (conv.participants || []).find(
+          (p: any) => p._id.toString() !== userId,
+        );
+
+        const unreadCount = await this.messageModel.countDocuments({
+          conversation: conv._id,
+          sender: { $ne: uid },
+          read: false,
+          deletedAt: null,
+        });
+
+        const obj = conv.toObject();
+        return {
+          _id: obj._id,
+          participants: obj.participants,
+          other: other
+            ? {
+                _id: other._id,
+                username: other.username,
+                name: other.name,
+                avatarUrl: other.avatarUrl,
+                isVerified: other.isVerified,
+              }
+            : null,
+          lastMessage: obj.lastMessage || null,
+          lastMessageAt: obj.lastMessageAt,
+          unreadCount,
+        };
+      }),
+    );
+
+    return results.filter((c) => c.other);
+  }
+
+  // ============================================
+  // GET OR CREATE CONVERSATION
+  // ============================================
+  async getOrCreateConversation(userId: string, otherId: string) {
+    if (!Types.ObjectId.isValid(otherId)) {
+      throw new BadRequestException('Invalid userId');
+    }
+    if (userId === otherId) {
+      throw new BadRequestException('Cannot message yourself');
+    }
+
+    const uid = new Types.ObjectId(userId);
+    const oid = new Types.ObjectId(otherId);
+
+    let conv = await this.conversationModel
+      .findOne({ participants: { $all: [uid, oid] } })
+      .populate('participants', 'username name avatarUrl isVerified')
+      .exec();
 
     if (!conv) {
       conv = await this.conversationModel.create({
-        participants: [uId, oId],
+        participants: [uid, oid],
+        lastMessageAt: new Date(),
       });
+      conv = await conv.populate(
+        'participants',
+        'username name avatarUrl isVerified',
+      );
     }
 
-    return this.populateConversation(conv, userId);
-  }
-
-  async getMyConversations(userId: string) {
-    const uId = new Types.ObjectId(userId);
-    const convs = await this.conversationModel
-      .find({ participants: uId })
-      .sort({ lastMessageAt: -1 })
-      .limit(50)
-      .exec();
-
-    const populated = await Promise.all(convs.map((c) => this.populateConversation(c, userId)));
-    return populated.filter((c) => c.other !== null);
-  }
-
-  private async populateConversation(conv: ConversationDocument, currentUserId: string) {
-    const populated = await conv.populate([
-      { path: 'participants', select: 'username name avatarUrl isVerified' },
-      {
-        path: 'lastMessage',
-        select: 'text sender createdAt read',
-        populate: { path: 'sender', select: 'username' },
-      },
-    ]);
-
-    const unreadCount = await this.messageModel.countDocuments({
-      conversation: conv._id,
-      sender: { $ne: new Types.ObjectId(currentUserId) },
-      read: false,
-    });
-
-    const participants = (populated.participants as any[]).map((p) => ({
-      _id: p._id?.toString() || '',
-      username: p.username || 'unknown',
-      name: p.name || '',
-      avatarUrl: p.avatarUrl || '',
-      isVerified: p.isVerified || false,
-    }));
-
-    const other = participants.find((p: any) => p._id !== currentUserId) || null;
+    const obj: any = conv.toObject();
+    const other = (obj.participants || []).find(
+      (p: any) => p._id.toString() !== userId,
+    );
 
     return {
-      _id: conv._id.toString(),
-      participants,
-      other,
-      lastMessage: populated.lastMessage,
-      lastMessageAt: conv.lastMessageAt,
-      unreadCount,
+      _id: obj._id,
+      participants: obj.participants,
+      other: other
+        ? {
+            _id: other._id,
+            username: other.username,
+            name: other.name,
+            avatarUrl: other.avatarUrl,
+            isVerified: other.isVerified,
+          }
+        : null,
+      lastMessage: obj.lastMessage || null,
+      lastMessageAt: obj.lastMessageAt,
+      unreadCount: 0,
     };
   }
 
-  async getMessages(conversationId: string, userId: string, page = 1, limit = 50) {
+  // ============================================
+  // GET MESSAGES
+  // ============================================
+  async getMessages(
+    conversationId: string,
+    userId: string,
+    page = 1,
+    limit = 50,
+  ) {
+    if (!Types.ObjectId.isValid(conversationId)) return [];
+
     const conv = await this.conversationModel.findById(conversationId);
     if (!conv) throw new NotFoundException('Conversation not found');
-    if (!conv.participants.some((p) => p.toString() === userId)) {
-      throw new ForbiddenException('Not a participant');
-    }
+
+    const isParticipant = (conv.participants || []).some(
+      (p: any) => p.toString() === userId,
+    );
+    if (!isParticipant) throw new ForbiddenException('Not a participant');
 
     const skip = (page - 1) * limit;
     const messages = await this.messageModel
-      .find({ conversation: conv._id, deletedAt: null })
+      .find({ conversation: new Types.ObjectId(conversationId), deletedAt: null })
       .populate('sender', 'username name avatarUrl isVerified')
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limit)
       .exec();
 
-    return messages.reverse().map((m) => ({
-      _id: m._id.toString(),
-      conversation: m.conversation.toString(),
-      sender: {
-        _id: (m.sender as any)?._id?.toString() || '',
-        username: (m.sender as any)?.username || 'unknown',
-        name: (m.sender as any)?.name || '',
-        avatarUrl: (m.sender as any)?.avatarUrl || '',
-        isVerified: (m.sender as any)?.isVerified || false,
-      },
-       text: m.text,
-      read: m.read,
-      createdAt: (m as any).createdAt,
-    }));
+    return messages;
   }
 
-  async sendMessage(conversationId: string, userId: string, text: string) {
-    if (!text || !text.trim()) throw new BadRequestException('Message text required');
-    const conv = await this.conversationModel.findById(conversationId);
-    if (!conv) throw new NotFoundException('Conversation not found');
-    if (!conv.participants.some((p) => p.toString() === userId)) {
-      throw new ForbiddenException('Not a participant');
+  // ============================================
+  // SEND MESSAGE (with media support)
+  // ============================================
+  async sendMessage(
+    conversationId: string,
+    userId: string,
+    text: string,
+    mediaUrl?: string,
+    mediaType?: 'image' | 'video',
+  ) {
+    if (!Types.ObjectId.isValid(conversationId)) {
+      throw new BadRequestException('Invalid conversation');
     }
 
-    const msg = await this.messageModel.create({
-      conversation: conv._id,
+    const conv = await this.conversationModel.findById(conversationId);
+    if (!conv) throw new NotFoundException('Conversation not found');
+
+    const isParticipant = (conv.participants || []).some(
+      (p: any) => p.toString() === userId,
+    );
+    if (!isParticipant) throw new ForbiddenException('Not a participant');
+
+    const message = await this.messageModel.create({
+      conversation: new Types.ObjectId(conversationId),
       sender: new Types.ObjectId(userId),
-      text: text.trim().slice(0, 1000),
-      read: false,
+      text: text || '',
+      mediaUrl: mediaUrl || null,
+      mediaType: mediaType || null,
     });
 
-    conv.lastMessage = msg._id as any;
-    conv.lastMessageAt = new Date();
+    (conv as any).lastMessage = {
+      _id: message._id,
+      text: text || '',
+      sender: { _id: new Types.ObjectId(userId), username: '' },
+      mediaUrl: mediaUrl || null,
+      mediaType: mediaType || null,
+      createdAt: (message as any).createdAt,
+      read: false,
+    };
+    (conv as any).lastMessageAt = new Date();
     await conv.save();
 
-    const populated = await msg.populate('sender', 'username name avatarUrl isVerified');
-
-    return {
-      _id: populated._id.toString(),
-      conversation: populated.conversation.toString(),
-      sender: {
-        _id: (populated.sender as any)?._id?.toString() || '',
-        username: (populated.sender as any)?.username || 'unknown',
-        name: (populated.sender as any)?.name || '',
-        avatarUrl: (populated.sender as any)?.avatarUrl || '',
-        isVerified: (populated.sender as any)?.isVerified || false,
-      },
-       text: populated.text,
-      read: populated.read,
-      createdAt: (populated as any).createdAt,
-    };
+    return this.messageModel
+      .findById(message._id)
+      .populate('sender', 'username name avatarUrl isVerified')
+      .exec();
   }
 
+  // ============================================
+  // MARK CONVERSATION READ
+  // ============================================
   async markRead(conversationId: string, userId: string) {
     const result = await this.messageModel.updateMany(
       {
@@ -158,23 +208,30 @@ export class ChatService {
         sender: { $ne: new Types.ObjectId(userId) },
         read: false,
       },
-      { read: true },
+      { $set: { read: true } },
     );
     return { updated: result.modifiedCount };
   }
 
+  // ============================================
+  // UNREAD TOTAL
+  // ============================================
   async getUnreadTotal(userId: string) {
-    const convs = await this.conversationModel.find({
-      participants: new Types.ObjectId(userId),
-    }).select('_id');
+    const uid = new Types.ObjectId(userId);
+
+    const convs = await this.conversationModel
+      .find({ participants: uid })
+      .select('_id')
+      .exec();
     const convIds = convs.map((c) => c._id);
-    if (convIds.length === 0) return { count: 0 };
 
     const count = await this.messageModel.countDocuments({
       conversation: { $in: convIds },
-      sender: { $ne: new Types.ObjectId(userId) },
+      sender: { $ne: uid },
       read: false,
+      deletedAt: null,
     });
+
     return { count };
   }
 }
