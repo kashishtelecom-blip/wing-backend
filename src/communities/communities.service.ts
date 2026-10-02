@@ -155,9 +155,15 @@ export class CommunitiesService {
     return { deleted: true };
   }
 
-  // ============ GROUP CHAT ============
-  async sendMessage(communityId: string, userId: string, text: string) {
-    if (!text || !text.trim()) throw new BadRequestException('Message text required');
+    // ============ GROUP CHAT ============
+  async sendMessage(
+    communityId: string,
+    userId: string,
+    text: string,
+    mediaUrl?: string,
+    mediaType?: 'image' | 'video',
+    replyTo?: string,
+  ) {
     const community = await this.communityModel.findById(communityId);
     if (!community) throw new NotFoundException('Community not found');
 
@@ -167,10 +173,21 @@ export class CommunitiesService {
     const msg = await this.messageModel.create({
       community: new Types.ObjectId(communityId),
       sender: new Types.ObjectId(userId),
-      text: text.trim().slice(0, 1000),
+      text: (text || '').trim().slice(0, 2000),
+      mediaUrl: mediaUrl || null,
+      mediaType: mediaType || null,
+      replyTo: replyTo && Types.ObjectId.isValid(replyTo) ? new Types.ObjectId(replyTo) : null,
     });
 
-    return msg.populate('sender', 'username name avatarUrl isVerified');
+    return this.messageModel
+      .findById(msg._id)
+      .populate('sender', 'username name avatarUrl isVerified')
+      .populate({
+        path: 'replyTo',
+        select: 'text mediaUrl mediaType sender deletedAt',
+        populate: { path: 'sender', select: 'username name' },
+      })
+      .exec();
   }
 
   async getMessages(communityId: string, userId: string, limit = 50) {
@@ -182,13 +199,45 @@ export class CommunitiesService {
       throw new ForbiddenException('You must join the community to view messages');
     }
 
+    // Mark other people's messages as delivered
+    await this.messageModel.updateMany(
+      {
+        community: new Types.ObjectId(communityId),
+        sender: { $ne: new Types.ObjectId(userId) },
+        deliveredAt: null,
+      },
+      { $set: { deliveredAt: new Date() } },
+    );
+
     const messages = await this.messageModel
       .find({ community: new Types.ObjectId(communityId), deletedAt: null })
       .populate('sender', 'username name avatarUrl isVerified')
+      .populate({
+        path: 'replyTo',
+        select: 'text mediaUrl mediaType sender deletedAt',
+        populate: { path: 'sender', select: 'username name' },
+      })
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec();
 
     return messages.reverse();
+  }
+
+  async deleteMessage(communityId: string, userId: string, messageId: string) {
+    if (!Types.ObjectId.isValid(messageId)) {
+      throw new BadRequestException('Invalid message id');
+    }
+    const msg = await this.messageModel.findById(messageId);
+    if (!msg) throw new NotFoundException('Message not found');
+    if (msg.sender.toString() !== userId) {
+      throw new ForbiddenException('You can only delete your own messages');
+    }
+    msg.text = '';
+    msg.mediaUrl = null;
+    msg.mediaType = null;
+    msg.deletedAt = new Date();
+    await msg.save();
+    return { deleted: true };
   }
 }

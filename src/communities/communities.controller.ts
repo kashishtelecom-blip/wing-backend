@@ -1,18 +1,17 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Request,
+  Controller, Get, Post, Delete, Body, Param, Query,
+  UseGuards, Request, BadRequestException,
+  UseInterceptors, UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CommunitiesService } from './communities.service';
 import { CreateCommunityDto } from './dto/create-community.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { mediaStorage } from '../cloudinary.config';
+
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
+const VIDEO_EXT = /\.(mp4|webm|mov|m4v)$/i;
 
 @ApiTags('communities')
 @Controller('communities')
@@ -75,13 +74,54 @@ export class CommunitiesController {
   sendMessage(
     @Request() req,
     @Param('id') id: string,
-    @Body() body: { text: string },
+    @Body() body: { text?: string; mediaUrl?: string; mediaType?: 'image' | 'video'; replyTo?: string },
   ) {
+    if (!body?.text && !body?.mediaUrl) {
+      throw new BadRequestException('text or media required');
+    }
     return this.communitiesService.sendMessage(
       id,
       req.user.userId,
-      body?.text || '',
+      body.text || '',
+      body.mediaUrl,
+      body.mediaType,
+      body.replyTo,
     );
+  }
+
+  @Post(':id/upload')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: mediaStorage,
+      limits: { fileSize: 50 * 1024 * 1024 },
+    }),
+  )
+  async uploadCommunityMedia(
+    @Request() req,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    const isImage = IMAGE_EXT.test(file.originalname);
+    const isVideo = VIDEO_EXT.test(file.originalname);
+    if (!isImage && !isVideo) {
+      throw new BadRequestException('Only images or videos allowed');
+    }
+    const url = (file as any).path || (file as any).secure_url || '';
+    return { url, type: isVideo ? 'video' : 'image' };
+  }
+
+  @Delete(':id/messages/:messageId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  deleteMessage(
+    @Request() req,
+    @Param('id') id: string,
+    @Param('messageId') messageId: string,
+  ) {
+    return this.communitiesService.deleteMessage(id, req.user.userId, messageId);
   }
 
   // ============ MEMBERS ============
