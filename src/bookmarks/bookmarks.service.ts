@@ -44,10 +44,10 @@ export class BookmarksService {
   async list(userId: string) {
     return this.bookmarkModel
       .find({ user: new Types.ObjectId(userId) })
-      .populate({
-        path: 'wing',
-        populate: { path: 'author', select: 'name email isVerified' },
-      })
+     .populate({
+  path: 'wing',
+  populate: { path: 'author', select: 'username name avatarUrl isVerified' },
+})
       .sort({ createdAt: -1 })
       .exec();
   }

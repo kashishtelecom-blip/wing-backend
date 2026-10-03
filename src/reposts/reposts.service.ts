@@ -65,7 +65,7 @@ export class RepostsService {
   async listForWing(wingId: string) {
     return this.repostModel
       .find({ wing: new Types.ObjectId(wingId), deletedAt: null })
-      .populate('user', 'name username email isVerified')
+      .populate('user', 'name username avatarUrl isVerified')
       .sort({ createdAt: -1 })
       .exec();
   }
@@ -75,7 +75,7 @@ export class RepostsService {
       .find({ user: new Types.ObjectId(userId), deletedAt: null })
       .populate({
         path: 'wing',
-        populate: { path: 'author', select: 'name username email isVerified' },
+        populate: { path: 'author', select: 'username name avatarUrl isVerified' },
       })
       .sort({ createdAt: -1 })
       .exec();
