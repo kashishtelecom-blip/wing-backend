@@ -7,14 +7,17 @@ import {
   Conversation, ConversationDocument,
 } from './schemas/conversation.schema';
 import { Message, MessageDocument } from './schemas/message.schema';
+import { ChatGateway } from './chat.gateway';
+
 
 @Injectable()
 export class ChatService {
-  constructor(
+    constructor(
     @InjectModel(Conversation.name)
     private conversationModel: Model<ConversationDocument>,
     @InjectModel(Message.name)
     private messageModel: Model<MessageDocument>,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   // ============================================
@@ -208,7 +211,7 @@ export class ChatService {
     (conv as any).lastMessageAt = new Date();
     await conv.save();
 
-    return this.messageModel
+    const populated = await this.messageModel
       .findById(message._id)
       .populate('sender', 'username name avatarUrl isVerified')
       .populate({
@@ -217,6 +220,21 @@ export class ChatService {
         populate: { path: 'sender', select: 'username name' },
       })
       .exec();
+
+    // 🔌 Emit real-time event to everyone in the conversation
+    try {
+      if (populated) {
+        this.chatGateway.emitToConversation(
+          conversationId,
+          'new-message',
+          populated.toObject(),
+        );
+      }
+    } catch (err) {
+      console.warn('Failed to emit chat message:', (err as Error).message);
+    }
+
+    return populated;
   }
 
   // ============================================
