@@ -6,12 +6,14 @@ import {
   NotificationDocument,
   NotificationType,
 } from './schemas/notification.schema';
+import { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectModel(Notification.name)
     private notificationModel: Model<NotificationDocument>,
+    private readonly gateway: NotificationsGateway,
   ) {}
 
   async create(
@@ -20,15 +22,28 @@ export class NotificationsService {
     type: NotificationType,
     wing?: string,
   ) {
-    // Don't notify yourself
     if (recipient === sender) return null;
 
-    return this.notificationModel.create({
+    const notification = await this.notificationModel.create({
       recipient: new Types.ObjectId(recipient),
       sender: new Types.ObjectId(sender),
       type,
       wing: wing ? new Types.ObjectId(wing) : undefined,
     });
+
+    // ✅ Push real-time event to recipient's socket room
+    try {
+      const populated = await notification.populate([
+        { path: 'sender', select: 'name username avatarUrl isVerified' },
+        { path: 'wing', select: 'title' },
+      ]);
+      this.gateway.emitToUser(recipient, 'notification', populated.toObject());
+    } catch (err) {
+      // Non-fatal — polling fallback still works
+      console.warn('Failed to emit notification event:', (err as Error).message);
+    }
+
+    return notification;
   }
 
   async list(userId: string) {
