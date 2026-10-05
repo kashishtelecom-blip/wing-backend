@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -25,7 +26,6 @@ export class CommentsService {
     wingId: string,
     createCommentDto: CreateCommentDto,
   ): Promise<Comment> {
-    // Check wing exists and comments are enabled
     const targetWing = await this.wingModel.findById(wingId);
     if (!targetWing) throw new NotFoundException('Wing not found');
     if (targetWing.commentsEnabled === false) {
@@ -50,21 +50,35 @@ export class CommentsService {
       wingId,
     );
 
-    return saved;
+    return saved.populate('author', 'name username avatarUrl isVerified');
   }
 
-  async findAllForWing(wingId: string): Promise<Comment[]> {
-    return this.commentModel
+  async findAllForWing(
+    wingId: string,
+    currentUserId?: string,
+  ): Promise<any[]> {
+    const comments = await this.commentModel
       .find({ wing: new Types.ObjectId(wingId), deletedAt: null })
-      .populate('author', 'name username email avatarUrl isVerified')
+      .populate('author', 'name username avatarUrl isVerified')
       .sort({ createdAt: -1 })
       .exec();
+
+    return comments.map((c: any) => {
+      const obj = c.toObject();
+      const likes = (obj.likes || []).map((l: any) => l.toString());
+      return {
+        ...obj,
+        likesCount: likes.length,
+        likedByMe: currentUserId ? likes.includes(currentUserId) : false,
+        likes: undefined, // don't leak the array
+      };
+    });
   }
 
   async findOne(id: string): Promise<Comment> {
     const comment = await this.commentModel
       .findOne({ _id: id, deletedAt: null })
-      .populate('author', 'name username email avatarUrl isVerified')
+      .populate('author', 'name username avatarUrl isVerified')
       .exec();
     if (!comment) throw new NotFoundException('Comment not found');
     return comment;
@@ -106,5 +120,60 @@ export class CommentsService {
     await this.wingModel.findByIdAndUpdate(comment.wing, {
       $inc: { commentsCount: -1 },
     });
+  }
+
+  // ============================================
+  // ✅ COMMENT LIKES
+  // ============================================
+  async likeComment(commentId: string, userId: string) {
+    if (!Types.ObjectId.isValid(commentId)) {
+      throw new NotFoundException('Comment not found');
+    }
+    const comment = await this.commentModel.findOne({
+      _id: commentId,
+      deletedAt: null,
+    });
+    if (!comment) throw new NotFoundException('Comment not found');
+
+    const uid = new Types.ObjectId(userId);
+    const alreadyLiked = (comment.likes || []).some(
+      (l) => l.toString() === userId,
+    );
+    if (alreadyLiked) {
+      // Idempotent — return current state instead of error
+      return {
+        liked: true,
+        likesCount: (comment.likes || []).length,
+      };
+    }
+
+    comment.likes = [...(comment.likes || []), uid];
+    await comment.save();
+
+    return {
+      liked: true,
+      likesCount: comment.likes.length,
+    };
+  }
+
+  async unlikeComment(commentId: string, userId: string) {
+    if (!Types.ObjectId.isValid(commentId)) {
+      throw new NotFoundException('Comment not found');
+    }
+    const comment = await this.commentModel.findOne({
+      _id: commentId,
+      deletedAt: null,
+    });
+    if (!comment) throw new NotFoundException('Comment not found');
+
+    comment.likes = (comment.likes || []).filter(
+      (l) => l.toString() !== userId,
+    );
+    await comment.save();
+
+    return {
+      liked: false,
+      likesCount: comment.likes.length,
+    };
   }
 }

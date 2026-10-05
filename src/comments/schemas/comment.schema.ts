@@ -9,14 +9,17 @@ export class Comment {
   text: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Wing', required: true })
-  wing: Types.ObjectId; // reference to the wing
+  wing: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  author: Types.ObjectId; // reference to the user
+  author: Types.ObjectId;
+
+  // ✅ Users who liked this comment
+  @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
+  likes: Types.ObjectId[];
 
   @Prop({ type: Date, default: null })
-deletedAt?: Date | null;
-
+  deletedAt?: Date | null;
 }
 
 export const CommentSchema = SchemaFactory.createForClass(Comment);
