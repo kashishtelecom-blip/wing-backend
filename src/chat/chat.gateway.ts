@@ -1,3 +1,4 @@
+
 import { Logger } from '@nestjs/common';
 import {
   WebSocketGateway,
@@ -131,7 +132,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`📤 Emitted "${event}" to ${room}`);
   }
 
-  // ============ USER ROOMS (notifications) ============
+   // ============ USER ROOMS (notifications) ============
   emitToUser(userId: string, event: string, payload: any) {
     if (!this.server) {
       this.logger.warn('Chat gateway server not ready');
@@ -139,5 +140,34 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     this.server.to(`user-${userId}`).emit(event, payload);
     this.logger.log(`📤 Emitted "${event}" to user-${userId}`);
+  }
+
+  // ============ TYPING INDICATOR ============
+  @SubscribeMessage('typing')
+  handleTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      conversationId?: string;
+      communityId?: string;
+      isTyping: boolean;
+    },
+  ) {
+    const userId = client.data?.userId;
+    if (!userId) return;
+
+    if (data.conversationId) {
+      client.to(`conversation-${data.conversationId}`).emit('typing', {
+        conversationId: data.conversationId,
+        userId,
+        isTyping: data.isTyping,
+      });
+    } else if (data.communityId) {
+      client.to(`community-${data.communityId}`).emit('typing', {
+        communityId: data.communityId,
+        userId,
+        isTyping: data.isTyping,
+      });
+    }
   }
 }
