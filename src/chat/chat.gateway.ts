@@ -1,4 +1,3 @@
-
 import { Logger } from '@nestjs/common';
 import {
   WebSocketGateway,
@@ -32,6 +31,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly logger = new Logger(ChatGateway.name);
 
+  private onlineUsers = new Set<string>();
+  private userSocketCount = new Map<string, number>();
+
   constructor(private readonly jwtService: JwtService) {}
 
   async handleConnection(client: Socket) {
@@ -49,6 +51,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.data.userId = userId;
       client.join(`user-${userId}`);
 
+      const prevCount = this.userSocketCount.get(userId) || 0;
+      this.userSocketCount.set(userId, prevCount + 1);
+      if (!this.onlineUsers.has(userId)) {
+        this.onlineUsers.add(userId);
+        if (this.server) this.server.emit('user-online', { userId });
+      }
+
+      client.emit('online-users', Array.from(this.onlineUsers));
+
       this.logger.log(`✅ User ${userId} connected (${client.id})`);
     } catch (err) {
       this.logger.warn(`❌ Socket auth failed: ${(err as Error).message}`);
@@ -57,11 +68,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
-    if (client.data?.userId) {
-      this.logger.log(
-        `👋 User ${client.data.userId} disconnected (${client.id})`,
-      );
+    const userId = client.data?.userId;
+    if (!userId) return;
+
+    const prevCount = this.userSocketCount.get(userId) || 0;
+    const nextCount = Math.max(0, prevCount - 1);
+    if (nextCount === 0) {
+      this.userSocketCount.delete(userId);
+      if (this.onlineUsers.has(userId)) {
+        this.onlineUsers.delete(userId);
+        if (this.server) this.server.emit('user-offline', { userId });
+      }
+    } else {
+      this.userSocketCount.set(userId, nextCount);
     }
+
+    this.logger.log(`👋 User ${userId} disconnected (${client.id})`);
   }
 
   // ============ CONVERSATION ROOMS (DMs) ============
@@ -132,7 +154,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`📤 Emitted "${event}" to ${room}`);
   }
 
-   // ============ USER ROOMS (notifications) ============
+  // ============ USER ROOMS (notifications) ============
   emitToUser(userId: string, event: string, payload: any) {
     if (!this.server) {
       this.logger.warn('Chat gateway server not ready');
