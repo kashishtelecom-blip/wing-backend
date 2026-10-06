@@ -3,7 +3,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { CommunitiesController } from './communities.controller';
 import { CommunitiesService } from './communities.service';
 import { Community, CommunitySchema } from './schemas/community.schema';
-import { CommunityMessage, CommunityMessageSchema } from './schemas/community-message.schema';
+import {
+  CommunityMessage,
+  CommunityMessageSchema,
+} from './schemas/community-message.schema';
+import { ChatModule } from '../chat/chat.module';
 
 @Module({
   imports: [
@@ -11,6 +15,7 @@ import { CommunityMessage, CommunityMessageSchema } from './schemas/community-me
       { name: Community.name, schema: CommunitySchema },
       { name: CommunityMessage.name, schema: CommunityMessageSchema },
     ]),
+    ChatModule,
   ],
   controllers: [CommunitiesController],
   providers: [CommunitiesService],

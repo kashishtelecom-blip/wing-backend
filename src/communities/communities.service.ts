@@ -8,27 +8,34 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Community, CommunityDocument } from './schemas/community.schema';
-import { CommunityMessage, CommunityMessageDocument } from './schemas/community-message.schema';
+import {
+  CommunityMessage,
+  CommunityMessageDocument,
+} from './schemas/community-message.schema';
 import { CreateCommunityDto } from './dto/create-community.dto';
+import { ChatGateway } from '../chat/chat.gateway';
 
 @Injectable()
 export class CommunitiesService {
   constructor(
-    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    @InjectModel(Community.name)
+    private communityModel: Model<CommunityDocument>,
     @InjectModel(CommunityMessage.name)
     private messageModel: Model<CommunityMessageDocument>,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   async create(userId: string, dto: CreateCommunityDto) {
     const existing = await this.communityModel.findOne({
       name: { $regex: '^' + dto.name + '$', $options: 'i' },
     });
-    if (existing) throw new ConflictException('A community with this name already exists');
+    if (existing)
+      throw new ConflictException('A community with this name already exists');
 
     const creatorId = new Types.ObjectId(userId);
     const community = await this.communityModel.create({
       name: dto.name.trim(),
-      description: dto.description.trim(),
+      description: dto.description?.trim() || '',
       emoji: dto.emoji || '👥',
       isPublic: dto.isPublic !== false,
       tags: dto.tags || [],
@@ -90,7 +97,9 @@ export class CommunitiesService {
     }
 
     const before = community.members.length;
-    community.members = community.members.filter((m) => m.toString() !== userId);
+    community.members = community.members.filter(
+      (m) => m.toString() !== userId,
+    );
     if (community.members.length < before) {
       community.membersCount = community.members.length;
       await community.save();
@@ -138,7 +147,9 @@ export class CommunitiesService {
       throw new ForbiddenException('Creator cannot be removed');
     }
 
-    community.members = community.members.filter((m) => m.toString() !== userId);
+    community.members = community.members.filter(
+      (m) => m.toString() !== userId,
+    );
     community.membersCount = community.members.length;
     await community.save();
 
@@ -155,7 +166,7 @@ export class CommunitiesService {
     return { deleted: true };
   }
 
-    // ============ GROUP CHAT ============
+  // ============ GROUP CHAT ============
   async sendMessage(
     communityId: string,
     userId: string,
@@ -168,7 +179,8 @@ export class CommunitiesService {
     if (!community) throw new NotFoundException('Community not found');
 
     const isMember = community.members.some((m) => m.toString() === userId);
-    if (!isMember) throw new ForbiddenException('You must join the community to chat');
+    if (!isMember)
+      throw new ForbiddenException('You must join the community to chat');
 
     const msg = await this.messageModel.create({
       community: new Types.ObjectId(communityId),
@@ -176,10 +188,13 @@ export class CommunitiesService {
       text: (text || '').trim().slice(0, 2000),
       mediaUrl: mediaUrl || null,
       mediaType: mediaType || null,
-      replyTo: replyTo && Types.ObjectId.isValid(replyTo) ? new Types.ObjectId(replyTo) : null,
+      replyTo:
+        replyTo && Types.ObjectId.isValid(replyTo)
+          ? new Types.ObjectId(replyTo)
+          : null,
     });
 
-    return this.messageModel
+    const populated = await this.messageModel
       .findById(msg._id)
       .populate('sender', 'username name avatarUrl isVerified')
       .populate({
@@ -188,6 +203,24 @@ export class CommunitiesService {
         populate: { path: 'sender', select: 'username name' },
       })
       .exec();
+
+    // 🔌 Emit real-time event to everyone in the community
+    try {
+      if (populated) {
+        this.chatGateway.emitToCommunity(
+          communityId,
+          'new-community-message',
+          populated.toObject(),
+        );
+      }
+    } catch (err) {
+      console.warn(
+        'Failed to emit community message:',
+        (err as Error).message,
+      );
+    }
+
+    return populated;
   }
 
   async getMessages(communityId: string, userId: string, limit = 50) {
@@ -196,10 +229,11 @@ export class CommunitiesService {
 
     const isMember = community.members.some((m) => m.toString() === userId);
     if (!isMember) {
-      throw new ForbiddenException('You must join the community to view messages');
+      throw new ForbiddenException(
+        'You must join the community to view messages',
+      );
     }
 
-    // Mark other people's messages as delivered
     await this.messageModel.updateMany(
       {
         community: new Types.ObjectId(communityId),
@@ -224,7 +258,11 @@ export class CommunitiesService {
     return messages.reverse();
   }
 
-  async deleteMessage(communityId: string, userId: string, messageId: string) {
+  async deleteMessage(
+    communityId: string,
+    userId: string,
+    messageId: string,
+  ) {
     if (!Types.ObjectId.isValid(messageId)) {
       throw new BadRequestException('Invalid message id');
     }

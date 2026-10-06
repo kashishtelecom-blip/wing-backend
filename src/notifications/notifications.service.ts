@@ -6,14 +6,15 @@ import {
   NotificationDocument,
   NotificationType,
 } from './schemas/notification.schema';
-import { NotificationsGateway } from './notifications.gateway';
+import { ChatGateway } from '../chat/chat.gateway';
+
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectModel(Notification.name)
     private notificationModel: Model<NotificationDocument>,
-    private readonly gateway: NotificationsGateway,
+       private readonly gateway: ChatGateway,
   ) {}
 
   async create(
