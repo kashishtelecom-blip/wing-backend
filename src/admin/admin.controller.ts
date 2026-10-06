@@ -60,6 +60,14 @@ export class AdminController {
     return this.adminService.deleteUser(id);
   }
 
+ @Patch('users/:id/verified')
+  setUserVerified(
+    @Param('id') id: string,
+    @Body() body: { isVerified: boolean },
+  ) {
+    return this.adminService.setUserVerified(id, body.isVerified);
+  }
+
   // ============ WINGS ============
   @Get('wings')
   listWings(

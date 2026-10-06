@@ -103,10 +103,29 @@ export class AdminService {
     return user;
   }
 
+
   async deleteUser(userId: string) {
     const result = await this.userModel.findByIdAndDelete(userId);
     if (!result) throw new NotFoundException('User not found');
     return { deleted: true };
+  }
+
+ async setUserVerified(userId: string, isVerified: boolean) {
+    const update: any = { isVerified };
+    if (!isVerified) {
+      update.verifiedUntil = null;
+      update.subscriptionTier = 'free';
+    } else {
+      // Admin verify = permanent until admin unverifies
+      update.verifiedUntil = null;
+      update.subscriptionTier = 'verified';
+    }
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, update, { returnDocument: 'after' })
+      .select('-password')
+      .exec();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
   // ============ WINGS ============
