@@ -4,6 +4,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { WingsModule } from './wings/wings.module';
 import { CommentsModule } from './comments/comments.module';
@@ -39,6 +40,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     }),
     
     UsersModule,
+    AdminModule,
     AuthModule,
     WingsModule,
     CommentsModule,
