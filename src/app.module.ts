@@ -3,6 +3,9 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
@@ -19,7 +22,6 @@ import { FollowsModule } from './follows/follows.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RepostsModule } from './reposts/reposts.module';
-import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -38,7 +40,7 @@ import { ScheduleModule } from '@nestjs/schedule';
         uri: configService.get<string>('MONGODB_URI'),
       }),
     }),
-    
+
     UsersModule,
     AdminModule,
     AuthModule,
@@ -56,7 +58,9 @@ import { ScheduleModule } from '@nestjs/schedule';
     NotificationsModule,
     RepostsModule,
   ],
+  controllers: [AppController],
   providers: [
+    AppService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
