@@ -175,7 +175,7 @@ export class ChatService {
     userId: string,
     text: string,
     mediaUrl?: string,
-    mediaType?: 'image' | 'video',
+    mediaType?: 'image' | 'video' | 'audio',
     replyTo?: string,
   ) {
     if (!Types.ObjectId.isValid(conversationId)) {

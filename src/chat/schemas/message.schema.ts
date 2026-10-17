@@ -18,8 +18,8 @@ export class Message {
   @Prop({ type: String, default: null })
   mediaUrl: string | null;
 
-  @Prop({ type: String, enum: ['image', 'video', null], default: null })
-  mediaType: 'image' | 'video' | null;
+  @Prop({ type: String, enum: ['image', 'video', 'audio', null], default: null })
+  mediaType: 'image' | 'video' | 'audio' | null;
 
   @Prop({ type: Types.ObjectId, ref: 'Message', default: null })
   replyTo?: Types.ObjectId | null;
