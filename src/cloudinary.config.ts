@@ -20,11 +20,18 @@ export const mediaStorage = new CloudinaryStorage({
   cloudinary,
   params: async (_req: any, file: any) => {
     const isVideo = /\.(mp4|webm|mov|m4v)$/i.test(file.originalname);
+    const isAudio =
+      file.mimetype?.startsWith('audio/') ||
+      /\.(mp3|wav|ogg|m4a|webm)$/i.test(file.originalname);
+
     return {
       folder: 'wing/media',
-      resource_type: isVideo ? 'video' : 'image',
+      // Cloudinary stores audio under the 'video' resource type
+      resource_type: isVideo || isAudio ? 'video' : 'image',
       allowed_formats: isVideo
         ? ['mp4', 'webm', 'mov', 'm4v']
+        : isAudio
+        ? ['mp3', 'wav', 'ogg', 'm4a', 'webm']
         : ['jpg', 'jpeg', 'png', 'gif', 'webp'],
     };
   },

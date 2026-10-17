@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { avatarStorage } from '../cloudinary.config';
+import { LikesService } from '../likes/likes.service';
 
 
 
@@ -25,6 +26,7 @@ export class UsersController {
     private readonly followsService: FollowsService,
     private readonly bookmarksService: BookmarksService,
     private readonly repostsService: RepostsService,
+    private readonly likesService: LikesService,
   ) {}
 
   @Get()
@@ -191,6 +193,14 @@ export class UsersController {
   @ApiBearerAuth()
   myReposts(@Request() req) {
     return this.repostsService.listByUser(req.user.userId);
+  }
+
+  @Get('me/likes')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  myLikes(@Request() req) {
+    // Assuming your LikesService has a listByUser method similar to RepostsService
+    return this.likesService.listByUser(req.user.userId);
   }
 
   @Post('me/pin/:wingId')

@@ -6,6 +6,7 @@ import { User, UserSchema } from './schemas/user.schema';
 import { FollowsModule } from '../follows/follows.module';
 import { BookmarksModule } from '../bookmarks/bookmarks.module';
 import { RepostsModule } from '../reposts/reposts.module';
+import { LikesModule } from '../likes/likes.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { RepostsModule } from '../reposts/reposts.module';
     FollowsModule,
     BookmarksModule,
     RepostsModule,
+    LikesModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],

@@ -62,6 +62,17 @@ export class LikesService {
     return { liked: false };
   }
 
+  async listByUser(userId: string) {
+    return this.likeModel
+      .find({ user: new Types.ObjectId(userId) })
+      .populate({
+        path: 'wing',
+        populate: { path: 'author', select: 'name username avatarUrl isVerified' },
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
   async getLikers(wingId: string) {
     return this.likeModel
       .find({ wing: new Types.ObjectId(wingId) })
