@@ -7,14 +7,15 @@ import {
   NotificationType,
 } from './schemas/notification.schema';
 import { ChatGateway } from '../chat/chat.gateway';
-
+import { PushService } from '../push/push.service'; // NEW
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectModel(Notification.name)
     private notificationModel: Model<NotificationDocument>,
-       private readonly gateway: ChatGateway,
+    private readonly gateway: ChatGateway,
+    private readonly pushService: PushService, // NEW
   ) {}
 
   async create(
@@ -38,7 +39,28 @@ export class NotificationsService {
         { path: 'sender', select: 'name username avatarUrl isVerified' },
         { path: 'wing', select: 'title' },
       ]);
+      
       this.gateway.emitToUser(recipient, 'notification', populated.toObject());
+
+           // 🔔 NEW: Send Web Push Notification
+      let body = 'You have a new notification on Wing.';
+      if (populated.sender) {
+        const senderObj = populated.sender as any;
+        const name = senderObj.name || senderObj.username;
+        if (type === NotificationType.LIKE) body = `${name} liked your wing.`;
+        else if (type === NotificationType.COMMENT) body = `${name} commented on your wing.`;
+        else if (type === NotificationType.FOLLOW) body = `${name} followed you.`;
+        else if (type === NotificationType.REPOST) body = `${name} reposted your wing.`;
+        else if (type === NotificationType.MENTION) body = `${name} mentioned you in a wing.`;
+      }
+
+      // Fire and forget (don't block the main thread)
+      this.pushService.sendPush(recipient, {
+        title: 'Wing',
+        body,
+        url: '/notifications',
+      }).catch(err => console.error('Push error:', err));
+
     } catch (err) {
       // Non-fatal — polling fallback still works
       console.warn('Failed to emit notification event:', (err as Error).message);

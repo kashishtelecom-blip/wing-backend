@@ -22,6 +22,7 @@ import { FollowsModule } from './follows/follows.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RepostsModule } from './reposts/reposts.module';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { RepostsModule } from './reposts/reposts.module';
     BookmarksModule,
     NotificationsModule,
     RepostsModule,
+    PushModule,
   ],
   controllers: [AppController],
   providers: [

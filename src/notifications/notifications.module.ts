@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
-import {
-  Notification,
-  NotificationSchema,
-} from './schemas/notification.schema';
+import { NotificationsController } from './notifications.controller';
+import { Notification, NotificationSchema } from './schemas/notification.schema';
 import { ChatModule } from '../chat/chat.module';
+import { PushModule } from '../push/push.module'; // <-- ADD THIS
 
 @Module({
   imports: [
@@ -14,6 +12,7 @@ import { ChatModule } from '../chat/chat.module';
       { name: Notification.name, schema: NotificationSchema },
     ]),
     ChatModule,
+    PushModule, // <-- ADD THIS
   ],
   controllers: [NotificationsController],
   providers: [NotificationsService],
