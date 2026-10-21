@@ -12,7 +12,6 @@ export class PushService {
     @InjectModel(PushSubscription.name)
     private pushModel: Model<PushSubscription>,
   ) {
-    // Configure web-push with our VAPID keys from .env
     webpush.setVapidDetails(
       process.env.VAPID_SUBJECT || 'mailto:hello@wingapp.com',
       process.env.VAPID_PUBLIC_KEY || '',
@@ -21,14 +20,28 @@ export class PushService {
   }
 
   async subscribe(userId: string, sub: any) {
-    return this.pushModel.findOneAndUpdate(
-      { user: userId, endpoint: sub.endpoint },
-      { user: userId, endpoint: sub.endpoint, keys: sub.keys },
-      { upsert: true, new: true },
-    );
+    try {
+      return await this.pushModel.findOneAndUpdate(
+        { endpoint: sub.endpoint },
+        { user: userId, endpoint: sub.endpoint, keys: sub.keys },
+        { upsert: true, returnDocument: 'after' },
+      );
+    } catch (err: any) {
+      if (err.code === 11000) {
+        return this.pushModel.findOneAndUpdate(
+          { endpoint: sub.endpoint },
+          { user: userId, keys: sub.keys },
+          { returnDocument: 'after' },
+        );
+      }
+      throw err;
+    }
   }
 
-  async sendPush(userId: string, payload: { title: string; body: string; url?: string }) {
+  async sendPush(
+    userId: string,
+    payload: { title: string; body: string; url?: string },
+  ) {
     const subs = await this.pushModel.find({ user: userId });
 
     for (const sub of subs) {
@@ -38,7 +51,6 @@ export class PushService {
           JSON.stringify(payload),
         );
       } catch (err: any) {
-        // If the subscription is expired or invalid (410 Gone), delete it
         if (err.statusCode === 410 || err.statusCode === 404) {
           await this.pushModel.deleteOne({ _id: sub._id });
         } else {
