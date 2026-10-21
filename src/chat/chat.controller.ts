@@ -78,7 +78,7 @@ export class ChatController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: mediaStorage,
-      limits: { fileSize: 50 * 1024 * 1024 },
+      limits: { fileSize: 500 * 1024 * 1024 },
     }),
   )
   async uploadChatMedia(
