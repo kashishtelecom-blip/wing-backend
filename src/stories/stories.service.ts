@@ -11,7 +11,7 @@ export class StoriesService {
 
   async create(userId: string, mediaUrl: string, mediaType: 'image' | 'video') {
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
+    expiresAt.setHours(expiresAt.getHours() + 24);
 
     const story = await this.storyModel.create({
       author: new Types.ObjectId(userId),
@@ -26,15 +26,13 @@ export class StoriesService {
   async getFeed(currentUserId: string) {
     const now = new Date();
     
-    // Fetch all active stories (not expired), newest first
     const stories = await this.storyModel
       .find({ expiresAt: { $gt: now } })
       .populate('author', 'name username avatarUrl isVerified')
       .sort({ createdAt: -1 })
       .exec();
 
-    // Group stories by author ID
-    const groupedStories = new Map();
+    const groupedStories = new Map<string, any>();
 
     for (const story of stories) {
       const author: any = story.author;
@@ -56,13 +54,14 @@ export class StoriesService {
         });
       }
 
-      const hasViewed = story.views.some(id => id.toString() === currentUserId);
+      // EXPLICIT TYPING for the .some() callback
+      const hasViewed = story.views.some((id: Types.ObjectId) => id.toString() === currentUserId);
 
       groupedStories.get(authorId).stories.push({
         _id: story._id,
         mediaUrl: story.mediaUrl,
         mediaType: story.mediaType,
-        createdAt: story.createdAt,
+        createdAt: (story as any).createdAt,
         hasViewed,
       });
 
@@ -71,12 +70,11 @@ export class StoriesService {
       }
     }
 
-    // Convert map to array
     return Array.from(groupedStories.values());
   }
 
   async markViewed(storyId: string, userId: string) {
-    if (!Types.ObjectId.isValid(storyId)) return;
+    if (!Types.ObjectId.isValid(storyId)) return { viewed: false };
     await this.storyModel.findByIdAndUpdate(
       storyId,
       { $addToSet: { views: new Types.ObjectId(userId) } }
@@ -90,7 +88,9 @@ export class StoriesService {
     if (story.author.toString() !== userId) {
       throw new ForbiddenException('You can only delete your own stories');
     }
-    await story.deleteOne();
+    
+    // Use findByIdAndDelete to avoid TS errors on document methods
+    await this.storyModel.findByIdAndDelete(storyId);
     return { deleted: true };
   }
 }

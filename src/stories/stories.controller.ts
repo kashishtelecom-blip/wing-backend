@@ -9,24 +9,24 @@ export class StoriesController {
 
   @Post()
   create(
-    @Request() req,
+    @Request() req: any, // Type as any to avoid TS errors
     @Body() body: { mediaUrl: string; mediaType: 'image' | 'video' },
   ) {
     return this.storiesService.create(req.user.userId, body.mediaUrl, body.mediaType);
   }
 
   @Get('feed')
-  getFeed(@Request() req) {
+  getFeed(@Request() req: any) {
     return this.storiesService.getFeed(req.user.userId);
   }
 
   @Post(':id/view')
-  markViewed(@Request() req, @Param('id') id: string) {
+  markViewed(@Request() req: any, @Param('id') id: string) {
     return this.storiesService.markViewed(id, req.user.userId);
   }
 
   @Delete(':id')
-  remove(@Request() req, @Param('id') id: string) {
+  remove(@Request() req: any, @Param('id') id: string) {
     return this.storiesService.delete(id, req.user.userId);
   }
 }

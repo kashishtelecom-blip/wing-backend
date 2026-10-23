@@ -17,7 +17,6 @@ export class Story {
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
   views: Types.ObjectId[];
 
-  // MongoDB TTL index will delete this document 24 hours after this date
   @Prop({ type: Date, required: true, index: { expires: '24h' } })
   expiresAt: Date;
 }
