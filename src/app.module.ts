@@ -23,6 +23,7 @@ import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RepostsModule } from './reposts/reposts.module';
 import { PushModule } from './push/push.module';
+import { StoriesModule } from './stories/stories.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { PushModule } from './push/push.module';
     NotificationsModule,
     RepostsModule,
     PushModule,
+    StoriesModule,
   ],
   controllers: [AppController],
   providers: [
