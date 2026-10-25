@@ -19,6 +19,15 @@ export class Story {
 
   @Prop({ type: Date, required: true, index: { expires: '24h' } })
   expiresAt: Date;
+
+  // NEW: Optional music attachment
+  @Prop({ type: Object, default: null })
+  music?: {
+    previewUrl: string;
+    title: string;
+    artist: string;
+    artworkUrl: string;
+  } | null;
 }
 
 export const StorySchema = SchemaFactory.createForClass(Story);

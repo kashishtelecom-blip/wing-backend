@@ -23,12 +23,12 @@ export class StoriesController {
 
   // 2. Save the story (after upload)
   @Post()
-  create(
-    @Request() req: any,
-    @Body() body: { mediaUrl: string; mediaType: 'image' | 'video' },
-  ) {
-    return this.storiesService.create(req.user.userId, body.mediaUrl, body.mediaType);
-  }
+create(
+  @Request() req: any,
+  @Body() body: { mediaUrl: string; mediaType: 'image' | 'video'; music?: any },
+) {
+  return this.storiesService.create(req.user.userId, body.mediaUrl, body.mediaType, body.music);
+}
 
   @Get('feed')
   getFeed(@Request() req: any) {

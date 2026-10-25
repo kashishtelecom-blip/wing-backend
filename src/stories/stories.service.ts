@@ -9,19 +9,20 @@ export class StoriesService {
     @InjectModel(Story.name) private storyModel: Model<StoryDocument>,
   ) {}
 
-  async create(userId: string, mediaUrl: string, mediaType: 'image' | 'video') {
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
+  async create(userId: string, mediaUrl: string, mediaType: 'image' | 'video', music?: any) {
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
 
-    const story = await this.storyModel.create({
-      author: new Types.ObjectId(userId),
-      mediaUrl,
-      mediaType,
-      expiresAt,
-    });
+  const story = await this.storyModel.create({
+    author: new Types.ObjectId(userId),
+    mediaUrl,
+    mediaType,
+    music: music || null,
+    expiresAt,
+  });
 
-    return story;
-  }
+  return story;
+}
 
   async getFeed(currentUserId: string) {
     const now = new Date();
@@ -57,13 +58,14 @@ export class StoriesService {
       // EXPLICIT TYPING for the .some() callback
       const hasViewed = story.views.some((id: Types.ObjectId) => id.toString() === currentUserId);
 
-      groupedStories.get(authorId).stories.push({
-        _id: story._id,
-        mediaUrl: story.mediaUrl,
-        mediaType: story.mediaType,
-        createdAt: (story as any).createdAt,
-        hasViewed,
-      });
+     groupedStories.get(authorId).stories.push({
+  _id: story._id,
+  mediaUrl: story.mediaUrl,
+  mediaType: story.mediaType,
+  music: story.music, // <-- ADD THIS
+  createdAt: (story as any).createdAt,
+  hasViewed,
+});
 
       if (!hasViewed) {
         groupedStories.get(authorId).hasUnseen = true;
