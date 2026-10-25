@@ -10,19 +10,19 @@ export class StoriesService {
   ) {}
 
   async create(userId: string, mediaUrl: string, mediaType: 'image' | 'video', music?: any) {
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + 24);
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
 
-  const story = await this.storyModel.create({
-    author: new Types.ObjectId(userId),
-    mediaUrl,
-    mediaType,
-    music: music || null,
-    expiresAt,
-  });
+    const story = await this.storyModel.create({
+      author: new Types.ObjectId(userId),
+      mediaUrl,
+      mediaType,
+      music: music || null,
+      expiresAt,
+    });
 
-  return story;
-}
+    return story;
+  }
 
   async getFeed(currentUserId: string) {
     const now = new Date();
@@ -55,17 +55,16 @@ export class StoriesService {
         });
       }
 
-      // EXPLICIT TYPING for the .some() callback
       const hasViewed = story.views.some((id: Types.ObjectId) => id.toString() === currentUserId);
 
-     groupedStories.get(authorId).stories.push({
-  _id: story._id,
-  mediaUrl: story.mediaUrl,
-  mediaType: story.mediaType,
-  music: story.music, // <-- ADD THIS
-  createdAt: (story as any).createdAt,
-  hasViewed,
-});
+      groupedStories.get(authorId).stories.push({
+        _id: story._id,
+        mediaUrl: story.mediaUrl,
+        mediaType: story.mediaType,
+        music: story.music,
+        createdAt: (story as any).createdAt,
+        hasViewed,
+      });
 
       if (!hasViewed) {
         groupedStories.get(authorId).hasUnseen = true;
@@ -84,6 +83,27 @@ export class StoriesService {
     return { viewed: true };
   }
 
+  // 👇 NEW METHOD ADDED HERE
+  async getViewers(storyId: string, userId: string) {
+    if (!Types.ObjectId.isValid(storyId)) {
+      throw new NotFoundException('Invalid story ID');
+    }
+
+    const story = await this.storyModel
+      .findById(storyId)
+      .populate('views', 'name username avatarUrl isVerified')
+      .exec();
+      
+    if (!story) throw new NotFoundException('Story not found');
+    
+    // Only the author can see who viewed their story
+    if (story.author.toString() !== userId) {
+      throw new ForbiddenException('You can only see viewers for your own stories');
+    }
+    
+    return story.views || [];
+  }
+
   async delete(storyId: string, userId: string) {
     const story = await this.storyModel.findById(storyId);
     if (!story) throw new NotFoundException('Story not found');
@@ -91,7 +111,6 @@ export class StoriesService {
       throw new ForbiddenException('You can only delete your own stories');
     }
     
-    // Use findByIdAndDelete to avoid TS errors on document methods
     await this.storyModel.findByIdAndDelete(storyId);
     return { deleted: true };
   }

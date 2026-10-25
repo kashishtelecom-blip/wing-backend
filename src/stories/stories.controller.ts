@@ -44,4 +44,9 @@ create(
   remove(@Request() req: any, @Param('id') id: string) {
     return this.storiesService.delete(id, req.user.userId);
   }
+  @Get(':id/viewers')
+  getViewers(@Request() req: any, @Param('id') id: string) {
+    return this.storiesService.getViewers(id, req.user.userId);
+  }
+
 }

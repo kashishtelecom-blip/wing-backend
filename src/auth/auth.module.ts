@@ -10,14 +10,17 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 
 @Module({
   imports: [
-    ConfigModule,   // <-- ADD THIS (makes ConfigService available in AuthModule)
+    ConfigModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1d' },
+        signOptions: {
+          // Cast to any — @nestjs/jwt uses a strict template literal type for expiresIn
+          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '365d') as any,
+        },
       }),
       inject: [ConfigService],
     }),
