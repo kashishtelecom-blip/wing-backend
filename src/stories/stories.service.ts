@@ -62,6 +62,7 @@ export class StoriesService {
         mediaUrl: story.mediaUrl,
         mediaType: story.mediaType,
         music: story.music,
+        viewsCount: story.views ? story.views.length : 0, // <-- ADD THIS
         createdAt: (story as any).createdAt,
         hasViewed,
       });

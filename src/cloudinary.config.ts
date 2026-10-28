@@ -26,7 +26,6 @@ export const mediaStorage = new CloudinaryStorage({
 
     return {
       folder: 'wing/media',
-      // Cloudinary stores audio under the 'video' resource type
       resource_type: isVideo || isAudio ? 'video' : 'image',
       allowed_formats: isVideo
         ? ['mp4', 'webm', 'mov', 'm4v']
