@@ -24,6 +24,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RepostsModule } from './reposts/reposts.module';
 import { PushModule } from './push/push.module';
 import { StoriesModule } from './stories/stories.module';
+import { BusinessModule } from './business/business.module';
+
 
 @Module({
   imports: [
@@ -61,6 +63,7 @@ import { StoriesModule } from './stories/stories.module';
     RepostsModule,
     PushModule,
     StoriesModule,
+    BusinessModule, 
   ],
   controllers: [AppController],
   providers: [

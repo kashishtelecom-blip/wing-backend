@@ -10,6 +10,9 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { BusinessPage, BusinessPageSchema } from '../business/schemas/business-page.schema';
 import { FollowsModule } from '../follows/follows.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { LikesModule } from '../likes/likes.module';
+import { BookmarksModule } from '../bookmarks/bookmarks.module';
+import { RepostsModule } from '../reposts/reposts.module';
 
 @Module({
   imports: [
@@ -19,10 +22,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
       { name: CopyrightReport.name, schema: CopyrightReportSchema },
       { name: PollVote.name, schema: PollVoteSchema },
       { name: User.name, schema: UserSchema },
-      { name: BusinessPage.name, schema: BusinessPageSchema }, // ✅ ADD
+      { name: BusinessPage.name, schema: BusinessPageSchema },
     ]),
     FollowsModule,
     NotificationsModule,
+    LikesModule,
+    BookmarksModule,
+    RepostsModule,
   ],
   controllers: [WingsController],
   providers: [WingsService],
