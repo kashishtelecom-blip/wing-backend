@@ -2,11 +2,13 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Story, StoryDocument } from './schemas/story.schema';
+import { StoryComment, StoryCommentDocument } from './schemas/story-comment.schema';
 
 @Injectable()
 export class StoriesService {
-  constructor(
+   constructor(
     @InjectModel(Story.name) private storyModel: Model<StoryDocument>,
+    @InjectModel(StoryComment.name) private commentModel: Model<StoryCommentDocument>, // <-- ADD
   ) {}
 
   async create(userId: string, mediaUrl: string, mediaType: 'image' | 'video', music?: any) {
@@ -22,6 +24,27 @@ export class StoriesService {
     });
 
     return story;
+  }
+
+async addComment(storyId: string, userId: string, text: string) {
+    const story = await this.storyModel.findById(storyId);
+    if (!story) throw new NotFoundException('Story not found');
+
+    const comment = await this.commentModel.create({
+      story: new Types.ObjectId(storyId),
+      author: new Types.ObjectId(userId),
+      text,
+    });
+
+    return comment.populate('author', 'name username avatarUrl');
+  }
+
+  async getComments(storyId: string) {
+    return this.commentModel
+      .find({ story: new Types.ObjectId(storyId) })
+      .populate('author', 'name username avatarUrl')
+      .sort({ createdAt: 1 })
+      .exec();
   }
 
   async getFeed(currentUserId: string) {

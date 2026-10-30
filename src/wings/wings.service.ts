@@ -18,6 +18,8 @@ import { User, UserDocument } from '../users/schemas/user.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/schemas/notification.schema';
 import { extractHashtags, extractMentionUsernames } from './utils/text-parser';
+import { BusinessPage, BusinessPageDocument } from '../business/schemas/business-page.schema';
+
 
 @Injectable()
 export class WingsService {
@@ -30,6 +32,7 @@ export class WingsService {
     @InjectModel(CopyrightReport.name)
     private copyrightModel: Model<CopyrightReportDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(BusinessPage.name) private pageModel: Model<BusinessPageDocument>,
     private followsService: FollowsService,
     private notificationsService: NotificationsService,
   ) {}
@@ -94,68 +97,78 @@ async reportCopyright(
   // ============================================
   // CREATE
   // ============================================
-  async create(userId: string, createWingDto: CreateWingDto): Promise<Wing> {
-    const text = createWingDto.title + ' ' + createWingDto.content;
-    const hashtags = extractHashtags(text);
-    const mentionUsernames = extractMentionUsernames(text);
+  async create(userId: string, createWingDto: CreateWingDto & { pageId?: string }): Promise<Wing> {
+  const text = createWingDto.title + ' ' + createWingDto.content;
+  const hashtags = extractHashtags(text);
+  const mentionUsernames = extractMentionUsernames(text);
 
-    let mentionedUserIds: Types.ObjectId[] = [];
-    if (mentionUsernames.length > 0) {
-      const users = await this.userModel
-        .find({ username: { $in: mentionUsernames } })
-        .select('_id')
-        .exec();
-      mentionedUserIds = users.map((u) => u._id as Types.ObjectId);
-    }
-
-    let pollData: any = null;
-    if (createWingDto.poll) {
-      if (createWingDto.poll.options.length < 2) {
-        throw new BadRequestException('Poll needs at least 2 options');
-      }
-      if (createWingDto.poll.options.length > 6) {
-        throw new BadRequestException('Poll can have at most 6 options');
-      }
-      pollData = {
-        question: createWingDto.poll.question,
-        options: createWingDto.poll.options.map((o) => ({ text: o.text, votes: 0 })),
-        endsAt: new Date(createWingDto.poll.endsAt),
-        totalVotes: 0,
-      };
-    }
-
-    const scheduledDate = createWingDto.scheduledAt
-      ? new Date(createWingDto.scheduledAt)
-      : null;
-    const isScheduled = scheduledDate !== null && scheduledDate > new Date();
-
-    const newWing = new this.wingModel({
-      title: createWingDto.title,
-      content: createWingDto.content,
-      poll: pollData,
-      author: new Types.ObjectId(userId),
-      isAnonymous: createWingDto.isAnonymous || false,
-      commentsEnabled: createWingDto.commentsEnabled !== false,
-      scheduledAt: scheduledDate,
-      isPublished: isScheduled ? false : createWingDto.isPublished !== false,
-      hashtags,
-      mentions: mentionedUserIds,
-    });
-    const saved = await newWing.save();
-
-    if (!isScheduled) {
-      for (const mentionedId of mentionedUserIds) {
-        await this.notificationsService.create(
-          mentionedId.toString(),
-          userId,
-          NotificationType.MENTION,
-          saved._id.toString(),
-        );
-      }
-    }
-
-    return saved;
+  let mentionedUserIds: Types.ObjectId[] = [];
+  if (mentionUsernames.length > 0) {
+    const users = await this.userModel
+      .find({ username: { $in: mentionUsernames } })
+      .select('_id')
+      .exec();
+    mentionedUserIds = users.map((u) => u._id as Types.ObjectId);
   }
+
+  let pollData: any = null;
+  if (createWingDto.poll) {
+    if (createWingDto.poll.options.length < 2) {
+      throw new BadRequestException('Poll needs at least 2 options');
+    }
+    if (createWingDto.poll.options.length > 6) {
+      throw new BadRequestException('Poll can have at most 6 options');
+    }
+    pollData = {
+      question: createWingDto.poll.question,
+      options: createWingDto.poll.options.map((o) => ({ text: o.text, votes: 0 })),
+      endsAt: new Date(createWingDto.poll.endsAt),
+      totalVotes: 0,
+    };
+  }
+
+  const scheduledDate = createWingDto.scheduledAt
+    ? new Date(createWingDto.scheduledAt)
+    : null;
+  const isScheduled = scheduledDate !== null && scheduledDate > new Date();
+
+  // ✅ NEW: Verify the page belongs to the user before allowing
+  let pageId: Types.ObjectId | undefined = undefined;
+  if (createWingDto.pageId) {
+    const page = await this.pageModel.findById(createWingDto.pageId);
+    if (page && page.owner.toString() === userId) {
+      pageId = page._id as Types.ObjectId;
+    }
+  }
+
+  const newWing = new this.wingModel({
+    title: createWingDto.title,
+    content: createWingDto.content,
+    poll: pollData,
+    author: new Types.ObjectId(userId),
+    page: pageId, // ✅ Assign page (or undefined for personal)
+    isAnonymous: createWingDto.isAnonymous || false,
+    commentsEnabled: createWingDto.commentsEnabled !== false,
+    scheduledAt: scheduledDate,
+    isPublished: isScheduled ? false : createWingDto.isPublished !== false,
+    hashtags,
+    mentions: mentionedUserIds,
+  });
+  const saved = await newWing.save();
+
+  if (!isScheduled) {
+    for (const mentionedId of mentionedUserIds) {
+      await this.notificationsService.create(
+        mentionedId.toString(),
+        userId,
+        NotificationType.MENTION,
+        saved._id.toString(),
+      );
+    }
+  }
+
+  return saved;
+}
 
   // ============================================
   // DRAFTS
@@ -228,61 +241,52 @@ async reportCopyright(
   // ============================================
   // READ
   // ============================================
-  async findAllPaginated(query: FindAllWingsDto): Promise<{
-    data: Wing[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 10;
-    const { search } = query;
-    const skip = (page - 1) * limit;
+  async findAllPaginated(query: FindAllWingsDto & { pageId?: string }): Promise<{
+  data: Wing[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 10;
+  const { search } = query;
+  const skip = (page - 1) * limit;
 
-    let filter: any = {
-      deletedAt: null,
-      isDraft: { $ne: true },
-      isPublished: true,
-        };
-    if (search) {
-      filter = {
-        deletedAt: null,
-        isDraft: { $ne: true },
-        isPublished: true,
-        $or: [
-          { title: { $regex: search, $options: 'i' } },
-          { content: { $regex: search, $options: 'i' } },
-        ],
-      };
-    }
+  const filter: any = {
+    deletedAt: null,
+    isDraft: { $ne: true },
+    isPublished: true,
+  };
 
-    const [data, total] = await Promise.all([
-      this.wingModel
-        .find(filter)
-        .populate('author', 'name username email isVerified avatarUrl')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      this.wingModel.countDocuments(filter),
-    ]);
-
-   return { data: this.maskAnonymousList(data), total, page, limit };
+  // ✅ NEW: Filter by business page if pageId provided
+  if ((query as any).pageId) {
+    // The route param is a slug, not the _id. Find the page by slug.
+    const pageDoc = await this.pageModel.findOne({ slug: (query as any).pageId });
+    if (pageDoc) filter.page = pageDoc._id;
+    else filter.page = null; // No matching page, return empty
   }
 
-  async findOne(id: string): Promise<Wing> {
-    const wing = await this.wingModel
-      .findOneAndUpdate(
-        { _id: id, deletedAt: null, isDraft: { $ne: true } },
-        { $inc: { views: 1 } },
-        { returnDocument: 'after' },
-      )
+  if (search) {
+    filter.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { content: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const [data, total] = await Promise.all([
+    this.wingModel
+      .find(filter)
       .populate('author', 'name username email isVerified avatarUrl')
-      .exec();
-    if (!wing) throw new NotFoundException('Wing not found');
-    return this.maskAnonymous(wing);
-  }
+      .populate('page', 'name slug avatarUrl')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .exec(),
+    this.wingModel.countDocuments(filter),
+  ]);
 
+  return { data: this.maskAnonymousList(data), total, page, limit };
+}
   // ============================================
   // UPDATE (with edit history)
   // ============================================
@@ -333,6 +337,20 @@ async reportCopyright(
       .populate('editor', 'name username email')
       .sort({ version: -1 })
       .exec();
+  }
+
+  async findOne(id: string): Promise<Wing> {
+    const wing = await this.wingModel
+      .findOneAndUpdate(
+        { _id: id, deletedAt: null, isDraft: { $ne: true } },
+        { $inc: { views: 1 } },
+        { returnDocument: 'after' },
+      )
+      .populate('author', 'name username email isVerified avatarUrl')
+      .populate('page', 'name slug avatarUrl')
+      .exec();
+    if (!wing) throw new NotFoundException('Wing not found');
+    return this.maskAnonymous(wing);
   }
 
   // ============================================

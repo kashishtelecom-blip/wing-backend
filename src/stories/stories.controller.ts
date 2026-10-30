@@ -48,5 +48,14 @@ create(
   getViewers(@Request() req: any, @Param('id') id: string) {
     return this.storiesService.getViewers(id, req.user.userId);
   }
+  @Post(':id/comments')
+  addComment(@Request() req: any, @Param('id') id: string, @Body() body: { text: string }) {
+    return this.storiesService.addComment(id, req.user.userId, body.text);
+  }
+
+  @Get(':id/comments')
+  getComments(@Param('id') id: string) {
+    return this.storiesService.getComments(id);
+  }
 
 }
