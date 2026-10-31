@@ -14,6 +14,9 @@ export class Wing {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   author: Types.ObjectId;
 
+@Prop({ type: Types.ObjectId, ref: 'BusinessPage', default: null })
+page?: Types.ObjectId | null;
+
   @Prop({ default: 0 })
   views: number;
 
