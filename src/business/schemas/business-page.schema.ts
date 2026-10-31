@@ -23,6 +23,9 @@ export class BusinessPage {
   @Prop({ default: 'Brand' })
   category: string;
 
+@Prop({ default: false })
+  isVerified: boolean;
+
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   owner: Types.ObjectId;
 

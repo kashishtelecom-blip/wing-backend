@@ -31,7 +31,7 @@ export class BusinessService {
     return page;
   }
 
-  async toggleFollow(slug: string, userId: string) {
+   async toggleFollow(slug: string, userId: string) {
     const page = await this.getPageBySlug(slug);
     const uid = new Types.ObjectId(userId);
     const isFollowing = page.followers.some((id) => id.toString() === userId);
@@ -41,6 +41,15 @@ export class BusinessService {
       return { following: false };
     } else {
       await this.pageModel.findByIdAndUpdate(page._id, { $addToSet: { followers: uid } });
+
+      // 👇 NEW: Check if the page should be auto-verified
+      const threshold = parseInt(process.env.AUTO_VERIFY_PAGE_THRESHOLD || '50000', 10);
+      
+      if (page.followers.length + 1 >= threshold && !page.isVerified) {
+        await this.pageModel.findByIdAndUpdate(page._id, { isVerified: true });
+        console.log(`✅ Auto-verified Business Page: ${page.name} with ${page.followers.length + 1} followers`);
+      }
+
       return { following: true };
     }
   }
