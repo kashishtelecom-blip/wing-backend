@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { BusinessPage, BusinessPageDocument } from './schemas/business-page.schema';
@@ -43,5 +43,41 @@ export class BusinessService {
       await this.pageModel.findByIdAndUpdate(page._id, { $addToSet: { followers: uid } });
       return { following: true };
     }
+  }
+
+  async updatePage(slug: string, userId: string, data: { name?: string; description?: string; category?: string }) {
+    const page = await this.getPageBySlug(slug);
+    if (page.owner.toString() !== userId) {
+      throw new ForbiddenException('Not authorized');
+    }
+    return this.pageModel.findByIdAndUpdate(
+      page._id,
+      { $set: data },
+      { returnDocument: 'after' },
+    );
+  }
+
+  async updateAvatar(slug: string, userId: string, avatarUrl: string) {
+    const page = await this.getPageBySlug(slug);
+    if (page.owner.toString() !== userId) {
+      throw new ForbiddenException('Not authorized');
+    }
+    return this.pageModel.findByIdAndUpdate(
+      page._id,
+      { avatarUrl },
+      { returnDocument: 'after' },
+    );
+  }
+
+  async updateCover(slug: string, userId: string, coverUrl: string) {
+    const page = await this.getPageBySlug(slug);
+    if (page.owner.toString() !== userId) {
+      throw new ForbiddenException('Not authorized');
+    }
+    return this.pageModel.findByIdAndUpdate(
+      page._id,
+      { coverUrl },
+      { returnDocument: 'after' },
+    );
   }
 }

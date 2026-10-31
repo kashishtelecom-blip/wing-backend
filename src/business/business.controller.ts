@@ -1,6 +1,19 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { BusinessService } from './business.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { avatarStorage, mediaStorage } from '../cloudinary.config';
 
 @Controller('business')
 export class BusinessController {
@@ -27,5 +40,35 @@ export class BusinessController {
   @UseGuards(JwtAuthGuard)
   follow(@Request() req: any, @Param('slug') slug: string) {
     return this.businessService.toggleFollow(slug, req.user.userId);
+  }
+
+  @Patch(':slug')
+  @UseGuards(JwtAuthGuard)
+  updatePage(@Request() req: any, @Param('slug') slug: string, @Body() body: any) {
+    return this.businessService.updatePage(slug, req.user.userId, body);
+  }
+
+  @Post(':slug/avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', { storage: avatarStorage }))
+  async updateAvatar(
+    @Request() req: any,
+    @Param('slug') slug: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const url = (file as any).path || (file as any).secure_url || '';
+    return this.businessService.updateAvatar(slug, req.user.userId, url);
+  }
+
+  @Post(':slug/cover')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', { storage: mediaStorage }))
+  async updateCover(
+    @Request() req: any,
+    @Param('slug') slug: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const url = (file as any).path || (file as any).secure_url || '';
+    return this.businessService.updateCover(slug, req.user.userId, url);
   }
 }
