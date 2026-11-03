@@ -273,17 +273,17 @@ async reportCopyright(
     ];
   }
 
-  const [data, total] = await Promise.all([
-    this.wingModel
-      .find(filter)
-      .populate('author', 'name username email isVerified avatarUrl')
-      .populate('page', 'name slug avatarUrl')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .exec(),
-    this.wingModel.countDocuments(filter),
-  ]);
+ const [data, total] = await Promise.all([
+      this.wingModel
+        .find(filter)
+        .populate('author', 'name username email isVerified avatarUrl')
+        .populate('page', 'name slug avatarUrl isVerified') // 👈 ADD THIS
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.wingModel.countDocuments(filter),
+    ]);
 
   return { data: this.maskAnonymousList(data), total, page, limit };
 }
@@ -431,16 +431,18 @@ async reportCopyright(
       filter.author = { $in: authorIds, $nin: excludeIds };
     }
 
-    const [data, total] = await Promise.all([
+   const [data, total] = await Promise.all([
       this.wingModel
         .find(filter)
         .populate('author', 'name username email isVerified avatarUrl')
+        .populate('page', 'name slug avatarUrl isVerified') // 👈 ADD THIS
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec(),
       this.wingModel.countDocuments(filter),
     ]);
+
 
      return { data: this.maskAnonymousList(data), total, page, limit };
   }

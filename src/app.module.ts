@@ -26,6 +26,7 @@ import { PushModule } from './push/push.module';
 import { StoriesModule } from './stories/stories.module';
 import { BusinessModule } from './business/business.module';
 import { PaymentsModule } from './payments/payments.module';
+import { EarningsModule } from './earnings/earnings.module';
 
 
 @Module({
@@ -65,7 +66,8 @@ import { PaymentsModule } from './payments/payments.module';
     PushModule,
     StoriesModule,
     BusinessModule,
-    PaymentsModule, 
+    PaymentsModule,
+    EarningsModule, 
    ],
   controllers: [AppController],
   providers: [

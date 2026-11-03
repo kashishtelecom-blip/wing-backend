@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
-export type CreatorEarningDocument = HydratedDocument<CreatorEarning>;
+export type CreatorEarningDocument = CreatorEarning & Document;
 
 @Schema({ timestamps: true })
 export class CreatorEarning {
@@ -9,16 +9,13 @@ export class CreatorEarning {
   user: Types.ObjectId;
 
   @Prop({ default: 0 })
-  totalQualifiedViews: number;
+  pendingBalance: number; // Money calculated by the cron job, ready to withdraw
 
   @Prop({ default: 0 })
-  pendingBalance: number; // Earned this month, not yet finalized
+  lifetimeEarnings: number; // Total money ever earned
 
   @Prop({ default: 0 })
-  availableBalance: number; // Ready to be withdrawn
-
-  @Prop({ default: 0 })
-  lifetimeEarnings: number;
+  totalQualifiedViews: number; // Total valid views
 }
 
 export const CreatorEarningSchema = SchemaFactory.createForClass(CreatorEarning);
