@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { EarningsService } from './earnings.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Adjust path if needed
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('earnings')
 export class EarningsController {
