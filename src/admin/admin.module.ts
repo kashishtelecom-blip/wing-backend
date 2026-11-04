@@ -7,6 +7,8 @@ import { Wing, WingSchema } from '../wings/schemas/wing.schema';
 import { Comment, CommentSchema } from '../comments/schemas/comment.schema';
 import { Community, CommunitySchema } from '../communities/schemas/community.schema';
 import { CopyrightReport, CopyrightReportSchema } from '../wings/schemas/copyright-report.schema';
+// 1. Import the CreatorEarning schema
+import { CreatorEarning, CreatorEarningSchema } from '../earnings/schemas/creator-earning.schema';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { CopyrightReport, CopyrightReportSchema } from '../wings/schemas/copyrig
       { name: Comment.name, schema: CommentSchema },
       { name: Community.name, schema: CommunitySchema },
       { name: CopyrightReport.name, schema: CopyrightReportSchema },
+      // 2. Register it here
+      { name: CreatorEarning.name, schema: CreatorEarningSchema }, 
     ]),
   ],
   controllers: [AdminController],
