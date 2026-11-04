@@ -261,3 +261,4 @@ async updatePayoutDetails(
 ) {
   return this.usersService.updatePayoutDetails(req.user.userId, body);
 }
+}
