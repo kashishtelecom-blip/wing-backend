@@ -282,6 +282,10 @@ export class UsersService {
     return { success: true, message: 'Account reactivated' };
   }
 
+ async updatePayoutDetails(userId: string, details: { upiId?: string; bankAccount?: string; ifscCode?: string }) {
+  return this.userModel.findByIdAndUpdate(userId, details, { new: true });
+}
+
   async exportData(userId: string) {
     const user = await this.userModel.findById(userId).select('-password').exec();
     if (!user) throw new NotFoundException('User not found');

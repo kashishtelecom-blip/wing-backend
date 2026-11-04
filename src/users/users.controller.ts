@@ -253,4 +253,11 @@ findOne(@Param('id') id: string) {
   getFollowing(@Param('id') id: string) {
     return this.followsService.getFollowing(id);
   }
+@Patch('me/payout-details')
+@UseGuards(JwtAuthGuard)
+async updatePayoutDetails(
+  @Body() body: { upiId?: string; bankAccount?: string; ifscCode?: string },
+  @Request() req
+) {
+  return this.usersService.updatePayoutDetails(req.user.userId, body);
 }

@@ -192,7 +192,7 @@ export class AdminService {
   // ============ PAYOUTS ============
   async getPayoutRequests() {
     return this.earningModel.find({ pendingBalance: { $gte: 500 } })
-      .populate('user', 'name username email avatarUrl')
+       .populate('user', 'name username email avatarUrl upiId bankAccount') 
       .sort({ pendingBalance: -1 })
       .exec();
   }

@@ -104,6 +104,14 @@ export class User {
 
   @Prop({ default: true })
   isActive: boolean;
-}
 
+ @Prop({ default: null })
+  upiId: string;
+
+  @Prop({ default: null })
+  bankAccount: string;
+
+  @Prop({ default: null })
+  ifscCode: string;
+}
 export const UserSchema = SchemaFactory.createForClass(User);
