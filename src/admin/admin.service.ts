@@ -13,6 +13,7 @@ import {
   CopyrightReportDocument,
   ReportStatus,
 } from '../wings/schemas/copyright-report.schema';
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -42,9 +43,7 @@ export class AdminService {
       this.commentModel.countDocuments({ deletedAt: null }),
       this.communityModel.countDocuments(),
       this.reportModel.countDocuments(),
-     this.reportModel
-        .countDocuments({ status: ReportStatus.PENDING })
-        .catch(() => 0),
+      this.reportModel.countDocuments({ status: ReportStatus.PENDING }).catch(() => 0),
     ]);
 
     return {
@@ -105,20 +104,18 @@ export class AdminService {
     return user;
   }
 
-
   async deleteUser(userId: string) {
     const result = await this.userModel.findByIdAndDelete(userId);
     if (!result) throw new NotFoundException('User not found');
     return { deleted: true };
   }
 
- async setUserVerified(userId: string, isVerified: boolean) {
+  async setUserVerified(userId: string, isVerified: boolean) {
     const update: any = { isVerified };
     if (!isVerified) {
       update.verifiedUntil = null;
       update.subscriptionTier = 'free';
     } else {
-      // Admin verify = permanent until admin unverifies
       update.verifiedUntil = null;
       update.subscriptionTier = 'verified';
     }
@@ -190,6 +187,22 @@ export class AdminService {
     const result = await this.communityModel.findByIdAndDelete(communityId);
     if (!result) throw new NotFoundException('Community not found');
     return { deleted: true };
+  }
+
+  // ============ PAYOUTS ============
+  async getPayoutRequests() {
+    return this.earningModel.find({ pendingBalance: { $gte: 500 } })
+      .populate('user', 'name username email avatarUrl')
+      .sort({ pendingBalance: -1 })
+      .exec();
+  }
+
+  async processPayout(userId: string) {
+    await this.earningModel.findOneAndUpdate(
+      { user: new Types.ObjectId(userId) },
+      { $set: { pendingBalance: 0 } }
+    );
+    return { success: true };
   }
 
   // ============ REPORTS ============

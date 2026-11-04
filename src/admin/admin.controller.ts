@@ -2,14 +2,12 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
   UseGuards, Request,
 } from '@nestjs/common';
-} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/schemas/user.schema';
-import { Request } from '@nestjs/common';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -61,7 +59,7 @@ export class AdminController {
     return this.adminService.deleteUser(id);
   }
 
- @Patch('users/:id/verified')
+  @Patch('users/:id/verified')
   setUserVerified(
     @Param('id') id: string,
     @Body() body: { isVerified: boolean },
@@ -111,6 +109,7 @@ export class AdminController {
     return this.adminService.deleteCommunity(id);
   }
 
+  // ============ PAYOUTS ============
   @Get('payouts')
   getPayouts() {
     return this.adminService.getPayoutRequests();
@@ -120,7 +119,6 @@ export class AdminController {
   payUser(@Param('userId') userId: string) {
     return this.adminService.processPayout(userId);
   }
-
 
   // ============ REPORTS ============
   @Get('reports')
