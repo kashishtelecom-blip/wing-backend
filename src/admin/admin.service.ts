@@ -7,6 +7,7 @@ import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 import { Wing, WingDocument } from '../wings/schemas/wing.schema';
 import { Comment, CommentDocument } from '../comments/schemas/comment.schema';
 import { Community, CommunityDocument } from '../communities/schemas/community.schema';
+import { CreatorEarning, CreatorEarningDocument } from '../earnings/schemas/creator-earning.schema';
 import {
   CopyrightReport,
   CopyrightReportDocument,
@@ -20,6 +21,7 @@ export class AdminService {
     @InjectModel(Comment.name) private commentModel: Model<CommentDocument>,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(CopyrightReport.name) private reportModel: Model<CopyrightReportDocument>,
+    @InjectModel(CreatorEarning.name) private earningModel: Model<CreatorEarningDocument>,
   ) {}
 
   // ============ OVERVIEW ============

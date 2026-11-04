@@ -1,6 +1,7 @@
 import {
-  Controller, Get, Patch, Delete, Body, Param, Query,
-  UseGuards,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  UseGuards, Request,
+} from '@nestjs/common';
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
@@ -109,6 +110,17 @@ export class AdminController {
   deleteCommunity(@Param('id') id: string) {
     return this.adminService.deleteCommunity(id);
   }
+
+  @Get('payouts')
+  getPayouts() {
+    return this.adminService.getPayoutRequests();
+  }
+
+  @Post('payouts/:userId/pay')
+  payUser(@Param('userId') userId: string) {
+    return this.adminService.processPayout(userId);
+  }
+
 
   // ============ REPORTS ============
   @Get('reports')
