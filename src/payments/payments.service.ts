@@ -29,7 +29,7 @@ export class PaymentsService {
     }
     try {
       const options = {
-        amount: amount * 100,
+        amount: amount * 100, // Amount in paise
         currency: 'INR',
         receipt: 'receipt_' + Date.now(),
       };
@@ -41,18 +41,18 @@ export class PaymentsService {
     }
   }
 
-async verifyPayment(
+  async verifyPayment(
     userId: string,
     orderId: string,
     paymentId: string,
     signature: string,
   ) {
     const secret = this.configService.get<string>('RAZORPAY_KEY_SECRET') || '';
-    
     if (!secret) {
       throw new BadRequestException('Razorpay secret missing on server.');
     }
 
+    // 1. Verify the signature to prevent fake payments
     const body = orderId + '|' + paymentId;
     const expectedSignature = crypto
       .createHmac('sha256', secret)
@@ -68,11 +68,5 @@ async verifyPayment(
     await this.usersService.subscribe(userId, paymentId);
     
     return { success: true, message: 'Payment verified, account upgraded!' };
-  }
-
-    // 2. Payment is real! Upgrade the user.
-    await this.usersService.subscribe(userId, paymentId);
-    
-    return { success: true, message: 'Payment verified, account upgraded!' };
-  }
+  } // <--- This closing brace was missing or misplaced before
 }
