@@ -72,11 +72,17 @@ export class WingsController {
     return this.wingsService.publishDraft(id, req.user.userId);
   }
 
- @Get('trending/hashtags')
-getTrendingHashtags(@Query('limit') limit?: number) {
-  const n = limit ? Number(limit) : 10;
-  return this.wingsService.getTrendingHashtags(n);
-}
+  // 👇 CLEANED UP: Single, correct definition of the trending routes
+  @Get('trending/hashtags')
+  getTrendingHashtags(@Query('limit') limit?: number) {
+    const n = limit ? Number(limit) : 10;
+    return this.wingsService.getTrendingHashtags(n);
+  }
+
+  @Get('trending/posts')
+  getTrendingPosts() {
+    return this.wingsService.getTrendingPosts();
+  }
 
   @Get('hashtag/:tag')
   findByHashtag(
@@ -85,16 +91,6 @@ getTrendingHashtags(@Query('limit') limit?: number) {
     @Query('limit') limit: number = 10,
   ) {
     return this.wingsService.findByHashtag(tag, Number(page), Number(limit));
-  }
-
-  @Get('trending/hashtags')
-  getTrendingHashtags() {
-    return this.wingsService.getTrendingHashtags();
-  }
-
-  @Get('trending/posts')
-  getTrendingPosts() {
-    return this.wingsService.getTrendingPosts();
   }
 
   @Get(':id')
@@ -125,7 +121,7 @@ getTrendingHashtags(@Query('limit') limit?: number) {
     return this.wingsService.getEditHistory(id);
   }
 
-@Post(':id/report-copyright')
+  @Post(':id/report-copyright')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   reportCopyright(
@@ -212,19 +208,19 @@ getTrendingHashtags(@Query('limit') limit?: number) {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @UseInterceptors(
-  FileInterceptor('file', {
-    storage: mediaStorage,
-    limits: { fileSize: 500 * 1024 * 1024 },
-  }),
-)
+    FileInterceptor('file', {
+      storage: mediaStorage,
+      limits: { fileSize: 500 * 1024 * 1024 },
+    }),
+  )
   async uploadMedia(
     @Request() req,
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-  if (!file) throw new BadRequestException('No file uploaded');
-const mediaUrl = (file as any).path || (file as any).secure_url || '';
-const isVideo = VIDEO_EXT.test(file.originalname);
+    if (!file) throw new BadRequestException('No file uploaded');
+    const mediaUrl = (file as any).path || (file as any).secure_url || '';
+    const isVideo = VIDEO_EXT.test(file.originalname);
     if (isVideo) {
       return this.wingsService.updateVideo(id, req.user.userId, mediaUrl);
     }
