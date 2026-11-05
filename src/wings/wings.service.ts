@@ -448,7 +448,7 @@ async reportCopyright(
   }
 
   // ============================================
-  // HASHTAGS
+  // HASHTAGS & TRENDING
   // ============================================
   async findByHashtag(
     tag: string,
@@ -472,6 +472,7 @@ async reportCopyright(
       this.wingModel
         .find(filter)
         .populate('author', 'name username email isVerified avatarUrl')
+        .populate('page', 'name slug avatarUrl isVerified')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -483,45 +484,62 @@ async reportCopyright(
   }
 
   async getTrendingHashtags(limit = 10) {
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  const result = await this.wingModel.aggregate([
-    {
-      $match: {
-        createdAt: { $gte: since },
-        deletedAt: null,
-        isDraft: { $ne: true },
-        isPublished: true,
-      },
-    },
-    { $unwind: '$hashtags' },
-    {
-      $group: {
-        _id: '$hashtags',
-        count: { $sum: 1 },
-        totalLikes: { $sum: '$likesCount' },
-        totalViews: { $sum: '$views' },
-      },
-    },
-    {
-      $addFields: {
-        score: {
-          $add: [
-            '$count',
-            { $multiply: ['$totalLikes', 3] },
-            { $multiply: ['$totalViews', 0.1] },
-          ],
+    const result = await this.wingModel.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: since },
+          deletedAt: null,
+          isDraft: { $ne: true },
+          isPublished: true,
         },
       },
-    },
-    { $sort: { score: -1 } },
-    { $limit: limit },
-    { $project: { _id: 1, count: 1, score: 1 } }, // keep _id
-  ]);
+      { $unwind: '$hashtags' },
+      {
+        $group: {
+          _id: '$hashtags',
+          count: { $sum: 1 },
+          totalLikes: { $sum: '$likesCount' },
+          totalViews: { $sum: '$views' },
+        },
+      },
+      {
+        $addFields: {
+          score: {
+            $add: [
+              '$count',
+              { $multiply: ['$totalLikes', 3] },
+              { $multiply: ['$totalViews', 0.1] },
+            ],
+          },
+        },
+      },
+      { $sort: { score: -1 } },
+      { $limit: limit },
+      { $project: { _id: 1, count: 1, score: 1 } }, // keep _id
+    ]);
 
-  return result;
-
+    return result;
   }
+
+  // 👇👇 NEW: Get Trending Posts 👇👇
+  async getTrendingPosts(limit = 20) {
+    const data = await this.wingModel
+      .find({ 
+        isPublished: true, 
+        deletedAt: null,
+        isDraft: { $ne: true }
+      })
+      .populate('author', 'username name avatarUrl isVerified')
+      .populate('page', 'name slug avatarUrl isVerified')
+      .sort({ views: -1, likesCount: -1, createdAt: -1 })
+      .limit(limit)
+      .exec();
+
+    return this.maskAnonymousList(data);
+  }
+  // 👆👆 END NEW FUNCTION 👆👆
 
   // ============================================
   // POLLS

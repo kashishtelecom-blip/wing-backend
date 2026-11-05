@@ -87,6 +87,16 @@ getTrendingHashtags(@Query('limit') limit?: number) {
     return this.wingsService.findByHashtag(tag, Number(page), Number(limit));
   }
 
+  @Get('trending/hashtags')
+  getTrendingHashtags() {
+    return this.wingsService.getTrendingHashtags();
+  }
+
+  @Get('trending/posts')
+  getTrendingPosts() {
+    return this.wingsService.getTrendingPosts();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.wingsService.findOne(id);
