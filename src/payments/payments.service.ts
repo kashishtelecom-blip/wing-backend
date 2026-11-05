@@ -41,22 +41,34 @@ export class PaymentsService {
     }
   }
 
-  async verifyPayment(
+async verifyPayment(
     userId: string,
     orderId: string,
     paymentId: string,
     signature: string,
   ) {
-    // 1. Verify the signature to prevent fake payments
+    const secret = this.configService.get<string>('RAZORPAY_KEY_SECRET') || '';
+    
+    if (!secret) {
+      throw new BadRequestException('Razorpay secret missing on server.');
+    }
+
     const body = orderId + '|' + paymentId;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
+      .createHmac('sha256', secret)
       .update(body.toString())
       .digest('hex');
 
     if (expectedSignature !== signature) {
+      console.error('❌ Signature Mismatch!', { expectedSignature, signature });
       throw new BadRequestException('Invalid payment signature');
     }
+
+    // 2. Payment is real! Upgrade the user.
+    await this.usersService.subscribe(userId, paymentId);
+    
+    return { success: true, message: 'Payment verified, account upgraded!' };
+  }
 
     // 2. Payment is real! Upgrade the user.
     await this.usersService.subscribe(userId, paymentId);
