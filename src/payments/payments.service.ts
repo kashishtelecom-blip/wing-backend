@@ -68,5 +68,5 @@ export class PaymentsService {
     await this.usersService.subscribe(userId, paymentId);
     
     return { success: true, message: 'Payment verified, account upgraded!' };
-  } // <--- This closing brace was missing or misplaced before
+  }
 }
