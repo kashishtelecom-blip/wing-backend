@@ -9,6 +9,7 @@ export enum NotificationType {
   FOLLOW = 'follow',
   REPOST = 'repost',
   MENTION = 'mention',
+  PAYOUT = 'payout',
 }
 
 @Schema({ timestamps: true })

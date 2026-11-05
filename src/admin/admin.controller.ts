@@ -116,8 +116,9 @@ export class AdminController {
   }
 
   @Post('payouts/:userId/pay')
-  payUser(@Param('userId') userId: string) {
-    return this.adminService.processPayout(userId);
+  payUser(@Param('userId') userId: string, @Request() req) {
+    // Pass req.user.userId as the adminId
+    return this.adminService.processPayout(userId, req.user.userId);
   }
 
   // ============ REPORTS ============

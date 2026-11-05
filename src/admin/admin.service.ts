@@ -13,6 +13,9 @@ import {
   CopyrightReportDocument,
   ReportStatus,
 } from '../wings/schemas/copyright-report.schema';
+// 1. Import NotificationsService and NotificationType
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/schemas/notification.schema';
 
 @Injectable()
 export class AdminService {
@@ -23,8 +26,9 @@ export class AdminService {
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(CopyrightReport.name) private reportModel: Model<CopyrightReportDocument>,
     @InjectModel(CreatorEarning.name) private earningModel: Model<CreatorEarningDocument>,
+    // 2. Inject the service
+    private readonly notificationsService: NotificationsService,
   ) {}
-
   // ============ OVERVIEW ============
   async getStats() {
     const [
@@ -196,14 +200,33 @@ export class AdminService {
       .sort({ pendingBalance: -1 })
       .exec();
   }
+async processPayout(userId: string, adminId: string) {
+    const earning = await this.earningModel.findOne({ user: new Types.ObjectId(userId) });
+    if (!earning) throw new NotFoundException('Earning record not found');
+    
+    const payoutAmount = earning.pendingBalance;
 
-  async processPayout(userId: string) {
     await this.earningModel.findOneAndUpdate(
       { user: new Types.ObjectId(userId) },
       { $set: { pendingBalance: 0 } }
     );
-    return { success: true };
+
+    // Trigger the notification
+    try {
+      await this.notificationsService.create(
+        userId, // recipient (the creator)
+        adminId, // sender (the admin)
+        NotificationType.PAYOUT, // type
+        undefined // no wing attached
+      );
+      console.log(`✅ Payout notification sent to ${userId}`);
+    } catch (err) {
+      console.error('❌ Failed to send payout notification:', err);
+    }
+
+    return { success: true, amount: payoutAmount };
   }
+}
 
   // ============ REPORTS ============
   async listReports(status: string | undefined, page = 1, limit = 30) {
