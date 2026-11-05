@@ -13,7 +13,6 @@ import {
   CopyrightReportDocument,
   ReportStatus,
 } from '../wings/schemas/copyright-report.schema';
-// 1. Import NotificationsService and NotificationType
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/schemas/notification.schema';
 
@@ -26,9 +25,9 @@ export class AdminService {
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(CopyrightReport.name) private reportModel: Model<CopyrightReportDocument>,
     @InjectModel(CreatorEarning.name) private earningModel: Model<CreatorEarningDocument>,
-    // 2. Inject the service
     private readonly notificationsService: NotificationsService,
   ) {}
+
   // ============ OVERVIEW ============
   async getStats() {
     const [
@@ -71,39 +70,21 @@ export class AdminService {
     }
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.userModel
-        .find(filter)
-        .select('-password')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      this.userModel.find(filter).select('-password').sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
       this.userModel.countDocuments(filter),
     ]);
     return { data, total, page, limit };
   }
 
   async setUserRole(adminId: string, userId: string, role: UserRole) {
-    if (adminId === userId) {
-      throw new BadRequestException('You cannot change your own role');
-    }
-    const user = await this.userModel
-      .findByIdAndUpdate(userId, { role }, { returnDocument: 'after' })
-      .select('-password')
-      .exec();
+    if (adminId === userId) throw new BadRequestException('You cannot change your own role');
+    const user = await this.userModel.findByIdAndUpdate(userId, { role }, { returnDocument: 'after' }).select('-password').exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   async setUserActive(userId: string, isActive: boolean) {
-    const user = await this.userModel
-      .findByIdAndUpdate(
-        userId,
-        { isActive, deactivatedAt: isActive ? null : new Date() },
-        { returnDocument: 'after' },
-      )
-      .select('-password')
-      .exec();
+    const user = await this.userModel.findByIdAndUpdate(userId, { isActive, deactivatedAt: isActive ? null : new Date() }, { returnDocument: 'after' }).select('-password').exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
@@ -123,10 +104,7 @@ export class AdminService {
       update.verifiedUntil = null;
       update.subscriptionTier = 'verified';
     }
-    const user = await this.userModel
-      .findByIdAndUpdate(userId, update, { returnDocument: 'after' })
-      .select('-password')
-      .exec();
+    const user = await this.userModel.findByIdAndUpdate(userId, update, { returnDocument: 'after' }).select('-password').exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
@@ -142,13 +120,7 @@ export class AdminService {
     }
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.wingModel
-        .find(filter)
-        .populate('author', 'username name avatarUrl')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      this.wingModel.find(filter).populate('author', 'username name avatarUrl').sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
       this.wingModel.countDocuments(filter),
     ]);
     return { data, total, page, limit };
@@ -175,13 +147,7 @@ export class AdminService {
   async listCommunities(page = 1, limit = 30) {
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.communityModel
-        .find()
-        .populate('creator', 'username name avatarUrl')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      this.communityModel.find().populate('creator', 'username name avatarUrl').sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
       this.communityModel.countDocuments(),
     ]);
     return { data, total, page, limit };
@@ -200,7 +166,8 @@ export class AdminService {
       .sort({ pendingBalance: -1 })
       .exec();
   }
-async processPayout(userId: string, adminId: string) {
+
+  async processPayout(userId: string, adminId: string) {
     const earning = await this.earningModel.findOne({ user: new Types.ObjectId(userId) });
     if (!earning) throw new NotFoundException('Earning record not found');
     
@@ -211,7 +178,6 @@ async processPayout(userId: string, adminId: string) {
       { $set: { pendingBalance: 0 } }
     );
 
-    // Trigger the notification
     try {
       await this.notificationsService.create(
         userId, // recipient (the creator)
@@ -225,8 +191,7 @@ async processPayout(userId: string, adminId: string) {
     }
 
     return { success: true, amount: payoutAmount };
-  }
-}
+  } // <--- THIS BRACE IS NOW PROPERLY CLOSED
 
   // ============ REPORTS ============
   async listReports(status: string | undefined, page = 1, limit = 30) {
@@ -234,27 +199,14 @@ async processPayout(userId: string, adminId: string) {
     if (status) filter.status = status;
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.reportModel
-        .find(filter)
-        .populate('wing', 'title content author')
-        .populate('reporter', 'username name email')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      this.reportModel.find(filter).populate('wing', 'title content author').populate('reporter', 'username name email').sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
       this.reportModel.countDocuments(filter),
     ]);
     return { data, total, page, limit };
   }
 
   async updateReportStatus(reportId: string, status: string) {
-    const report = await this.reportModel
-      .findByIdAndUpdate(
-        reportId,
-        { status, reviewedAt: new Date() },
-        { returnDocument: 'after' },
-      )
-      .exec();
+    const report = await this.reportModel.findByIdAndUpdate(reportId, { status, reviewedAt: new Date() }, { returnDocument: 'after' }).exec();
     if (!report) throw new NotFoundException('Report not found');
     return report;
   }
