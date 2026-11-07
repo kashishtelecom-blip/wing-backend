@@ -27,7 +27,7 @@ import { StoriesModule } from './stories/stories.module';
 import { BusinessModule } from './business/business.module';
 import { PaymentsModule } from './payments/payments.module';
 import { EarningsModule } from './earnings/earnings.module';
-
+import { SpacesModule } from './spaces/spaces.module';
 
 @Module({
   imports: [
@@ -68,6 +68,7 @@ import { EarningsModule } from './earnings/earnings.module';
     BusinessModule,
     PaymentsModule,
     EarningsModule, 
+    SpacesModule,
    ],
   controllers: [AppController],
   providers: [
